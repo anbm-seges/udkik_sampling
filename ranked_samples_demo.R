@@ -5,17 +5,63 @@ library(samplekmeans)
 library(tidyverse)
 library(dplyr)
 library(tidyterra)
+library(vctrs)
 
 f <- system.file("ex/elev.tif", package="terra")
 r <- rast(f)
 
+study_areas <- "C:/Users/anbm/OneDrive - SEGES Innovation PS/UDKIK/Data/Study_areas/Study_areas.shp" |> vect()
+
+values(study_areas)
+
+plot(study_areas[5, ])
+
+sampling_input <- c(
+  "C:/Users/anbm/OneDrive - SEGES Innovation PS/UDKIK/Data/Sampling_input/dhm2015_terraen_10m.tif",
+  "C:/Users/anbm/OneDrive - SEGES Innovation PS/UDKIK/Data/Sampling_input/peat_probability_2025_smooth.tif"
+) |>
+  rast()
+
+# global_sds <- global(sampling_input, fun = "sd", na.rm = TRUE)
+# #                              sd
+# # dhm2015_terraen_10m   24.602547
+# # peat_probability_2025 16.321100
+# # vdtochn                5.671995
+#
+# field_sds <- global(sampling_input_field, fun = "sd", na.rm = TRUE)
+# #                              sd
+# # dhm2015_terraen_10m   0.9847146
+# # peat_probability_2025 7.7782040
+# # vdtochn               0.2480967
+
+# feature_weights_field <- unlist(field_sds / global_sds)
+#
+# xy_weights_field <- sqrt(study_areas[5, ]$Shape_Area) / sqrt(45000*10^6)
+
+sampling_input_field <- crop(sampling_input, study_areas[5, ]) %>%
+  mask(study_areas[5, ])
+
+candidates_field <- ifel(
+  is.na(sum(sampling_input_field)),
+  NA,
+  1
+) %>%
+  mask(
+    study_areas[5, ] |> as.lines(),
+    inverse = TRUE
+  )
+
 set.seed(123)
 
 myclusters <- sample_kmeans(
-  input = r,
-  clusters = 3,
+  input = sampling_input_field,
+  clusters = round(study_areas[5, ]$Shape_Area / 10000),
   use_xy = TRUE,
-  sp_pts = TRUE
+  sp_pts = TRUE,
+  # layer_weights = feature_weights_field,
+  xy_weight = 2,
+  candidates = candidates_field,
+  pca = TRUE
 )
 
 plot(myclusters$clusters)
