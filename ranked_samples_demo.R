@@ -171,17 +171,14 @@ all_pts <- terra::extract(
   ) %>%
   ungroup()
 
-plot(r)
+plot(sampling_input_field[[1]])
 plot(all_pts, pch = 21, bg = "white", add = TRUE)
 plot(
-  buffer(
     as.polygons(
       myclusters$clusters
       ),
-    width = -75),
   add = TRUE,
-  border = c("red", "green", "blue"),
-  lwd = 1.5)
+  lwd = 1)
 text(
   all_pts,
   all_pts$label,
