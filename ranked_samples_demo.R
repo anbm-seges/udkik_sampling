@@ -78,59 +78,67 @@ points(
   bg = "white"
 )
 
+cluster_areas <- table(myclusters$clusters |> as.data.frame())
+
 extra_pts <- list()
+list_index <- 1
 
 for (i in seq_len(nrow(myclusters$points))) {
-  rast_i <- mask(
-    r,
-    mask = myclusters$clusters,
-    maskvalue = i,
-    inverse = TRUE
-  )
+  if(
+    cluster_areas[i] > 30
+  ) {
+    rast_i <- mask(
+      sampling_input_field,
+      mask = myclusters$clusters,
+      maskvalue = i,
+      inverse = TRUE
+    ) |>
+      trim()
 
-  weights_i <- mask(
-    myclusters$distances,
-    mask = myclusters$clusters,
-    maskvalue = i,
-    inverse = TRUE
-  ) |>
-    app(
-      function(x) {
-        1 / (x + 1)
-      }
+    candidates_i <- focal(
+      rast_i,
+      fun = function(x) {
+        if (sum(is.na(x) > 0)) {
+          return(NA)
+        } else {
+          return(1)
+        }
+      },
     )
 
-  set.seed(123)
+    set.seed(123)
 
-  clusters_i <- sample_kmeans(
-    input = rast_i,
-    clusters = 5,
-    use_xy = TRUE,
-    # weights = weights_i,
-    xy_weight = 2,
-    sp_pts = TRUE
-  )
-
-  extra_pts[[i]] <- clusters_i$points %>%
-    mutate(
-      cluster = i
+    clusters_i <- sample_kmeans(
+      input = rast_i,
+      clusters = round(cluster_areas[i] / 20),
+      use_xy = TRUE,
+      # weights = weights_i,
+      xy_weight = 2,
+      sp_pts = TRUE,
+      candidates = candidates_i
     )
+
+    extra_pts[[list_index]] <- clusters_i$points %>%
+      mutate(
+        cluster = i
+      )
+
+    list_index <- list_index + 1
+  }
 }
 
 
 plot(clusters_i$clusters)
 plot(rast_i)
-plot(weights_i)
 points(
   clusters_i$points,
   pch = 21,
   bg = "white"
 )
 
-
 extra_pts <- do.call(rbind, extra_pts)
 
-plot(r)
+plot(sampling_input_field[[1]])
 plot(myclusters$points, pch = 21, bg = "red", add = TRUE)
 plot(extra_pts, pch = 21, bg = "white", add = TRUE)
 
