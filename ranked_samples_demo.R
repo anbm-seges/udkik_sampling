@@ -201,6 +201,9 @@ all_pts <- bind_spat_rows(
       is.na(cluster) ~ ID,
       .default = cluster
     )
+  ) |>
+  unique(
+    atts = FALSE
   )
 
 all_pts <- terra::extract(
@@ -221,20 +224,36 @@ all_pts <- terra::extract(
   ) %>%
   ungroup()
 
-plot(sampling_input_field[[1]])
-plot(all_pts, pch = 21, bg = "white", add = TRUE)
+# Plot results
+
 plot(
-    as.polygons(
-      myclusters$clusters
-      ),
+  sampling_input_field[[2]],
+  col = gray.colors(100),
+  start = 0,
+  end = 1
+  )
+plot(
+  as.polygons(
+    myclusters$clusters
+  ),
+  1,
   add = TRUE,
-  lwd = 1)
+  alpha = 0.25,
+  col = carto_pal(9, "Bold"),
+  legend = FALSE,
+  border = "darkgrey"
+)
+plot(study_areas[study_area_idx, ], add = TRUE, lty = "32")
+plot(all_pts, pch = 21, bg = "white", add = TRUE)
 text(
   all_pts,
   all_pts$label,
   cex = 0.7,
   col = "black",
-  pos = 3
+  pos = 3,
+  hc = "white",
+  hw = 0.1,
+  halo = TRUE
 )
 
 # Implement candidates
