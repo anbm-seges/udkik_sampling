@@ -6,40 +6,86 @@ library(tidyverse)
 library(dplyr)
 library(tidyterra)
 library(vctrs)
+library(rcartocolor)
 
-f <- system.file("ex/elev.tif", package="terra")
-r <- rast(f)
+dir_data <- "C:/Users/anbm/OneDrive - SEGES Innovation PS/UDKIK/Data/"
 
-study_areas <- "C:/Users/anbm/OneDrive - SEGES Innovation PS/UDKIK/Data/Study_areas/Study_areas.shp" |> vect()
+study_areas <- paste0(
+  dir_data,
+  "Study_areas/Study_areas.shp"
+  ) |>
+  vect()
 
 values(study_areas)
 
-plot(study_areas[5, ])
+study_area_idx <- 3
 
-sampling_input <- c(
-  "C:/Users/anbm/OneDrive - SEGES Innovation PS/UDKIK/Data/Sampling_input/dhm2015_terraen_10m.tif",
-  "C:/Users/anbm/OneDrive - SEGES Innovation PS/UDKIK/Data/Sampling_input/peat_probability_2025_smooth.tif"
+plot(study_areas[study_area_idx, ])
+
+sampling_input <- paste0(
+  dir_data,
+  c(
+    "Sampling_input/dhm2015_terraen_10m.tif",
+    "Sampling_input/peat_probability_2025_resample.tif",
+    "Sampling_input/vdtochn.tif"
+  )
 ) |>
   rast()
 
-# global_sds <- global(sampling_input, fun = "sd", na.rm = TRUE)
-# #                              sd
-# # dhm2015_terraen_10m   24.602547
-# # peat_probability_2025 16.321100
-# # vdtochn                5.671995
-#
-# field_sds <- global(sampling_input_field, fun = "sd", na.rm = TRUE)
-# #                              sd
-# # dhm2015_terraen_10m   0.9847146
-# # peat_probability_2025 7.7782040
-# # vdtochn               0.2480967
 
-# feature_weights_field <- unlist(field_sds / global_sds)
-#
-# xy_weights_field <- sqrt(study_areas[5, ]$Shape_Area) / sqrt(45000*10^6)
+sampling_input_field <- crop(
+  sampling_input,
+  study_areas[study_area_idx, ]
+) |>
+  mask(
+    study_areas[study_area_idx, ],
+    touches = FALSE
+  )
 
-sampling_input_field <- crop(sampling_input, study_areas[5, ]) %>%
-  mask(study_areas[5, ])
+sampling_input_field <- ifel(
+  sum(is.na(sampling_input_field)) == 0,
+  sampling_input_field,
+  NA
+)
+
+plot(
+  sampling_input_field,
+  nr = 1
+  )
+
+# Transform input to percentiles to create clusters of roughly the same size.
+
+sampling_input_pctile <- sapp(
+  sampling_input_field,
+  function(x) {
+    x_ecdf <- ecdf(values(x))
+    app(x, x_ecdf)
+  }
+)
+
+field_means <- global(
+  sampling_input_pctile,
+  "mean",
+  na.rm = TRUE
+) |>
+  unlist()
+field_sds <- global(
+  sampling_input_pctile,
+  "sd",
+  na.rm = TRUE
+) |>
+  unlist()
+
+sampling_input_pctile <- sampling_input_pctile |>
+  clamp(
+    lower = field_means - field_sds*3,
+    upper = field_means + field_sds*3
+  )
+
+plot(
+  sampling_input_pctile,
+  nr = 1
+)
 
 candidates_field <- ifel(
   is.na(sum(sampling_input_field)),
