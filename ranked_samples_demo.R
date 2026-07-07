@@ -93,29 +93,36 @@ candidates_field <- ifel(
   1
 ) %>%
   mask(
-    study_areas[5, ] |> as.lines(),
+    study_areas[study_area_idx, ] |> as.lines(),
     inverse = TRUE
   )
 
-set.seed(123)
+plot(candidates_field)
+plot(study_areas[study_area_idx,], add = TRUE)
+
+set.seed(124)
 
 myclusters <- sample_kmeans(
-  input = sampling_input_field,
-  clusters = round(study_areas[5, ]$Shape_Area / 10000),
+  input = sampling_input_pctile,
+  clusters = round(study_areas[study_area_idx, ]$Shape_Area / 10000),
   use_xy = TRUE,
   sp_pts = TRUE,
-  # layer_weights = feature_weights_field,
   xy_weight = 2,
-  candidates = candidates_field,
-  pca = TRUE
+  candidates = candidates_field
+  ,
+  min_cluster_size = 50
 )
 
-plot(myclusters$clusters)
+plot(
+  as.factor(myclusters$clusters),
+  col = carto_pal(9, "Bold")
+  )
 points(
   myclusters$points,
   pch = 21,
   bg = "white"
 )
+plot(study_areas[study_area_idx,], add = TRUE)
 
 plot(myclusters$distances)
 points(
@@ -125,43 +132,53 @@ points(
 )
 
 cluster_areas <- table(myclusters$clusters |> as.data.frame())
+cluster_areas
 
 extra_pts <- list()
 list_index <- 1
 
 for (i in seq_len(nrow(myclusters$points))) {
   if(
-    cluster_areas[i] > 30
+    cluster_areas[i] > 50
   ) {
     rast_i <- mask(
-      sampling_input_field,
+      sampling_input_pctile,
       mask = myclusters$clusters,
       maskvalue = i,
       inverse = TRUE
     ) |>
       trim()
 
-    candidates_i <- focal(
-      rast_i,
-      fun = function(x) {
-        if (sum(is.na(x) > 0)) {
-          return(NA)
-        } else {
-          return(1)
-        }
-      },
-    )
+    candidates_i <- mask(
+      candidates_field,
+      mask = myclusters$clusters,
+      maskvalue = i,
+      inverse = TRUE
+    ) |>
+      crop(
+        rast_i
+      )
 
-    set.seed(123)
+    distances_i <- mask(
+      myclusters$distances,
+      mask = myclusters$clusters,
+      maskvalue = i,
+      inverse = TRUE
+    ) |>
+      crop(
+        rast_i
+      )
+
+    set.seed(124)
 
     clusters_i <- sample_kmeans(
       input = rast_i,
-      clusters = round(cluster_areas[i] / 20),
+      clusters = round(cluster_areas[i] / (100/3) ),
       use_xy = TRUE,
-      # weights = weights_i,
       xy_weight = 2,
       sp_pts = TRUE,
-      candidates = candidates_i
+      candidates = candidates_i,
+      weights = distances_i
     )
 
     extra_pts[[list_index]] <- clusters_i$points %>%
