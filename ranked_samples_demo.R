@@ -63,6 +63,8 @@ sampling_input_pctile <- sapp(
   }
 )
 
+# Remove outliers
+
 field_means <- global(
   sampling_input_pctile,
   "mean",
@@ -91,7 +93,8 @@ candidates_field <- ifel(
   is.na(sum(sampling_input_field)),
   NA,
   1
-) %>%
+) |>
+  focal(w = 3, "mean") |>
   mask(
     study_areas[study_area_idx, ] |> as.lines(),
     inverse = TRUE
@@ -108,8 +111,7 @@ myclusters <- sample_kmeans(
   use_xy = TRUE,
   sp_pts = TRUE,
   xy_weight = 2,
-  candidates = candidates_field
-  ,
+  candidates = candidates_field,
   min_cluster_size = 50
 )
 
@@ -213,13 +215,13 @@ all_pts <- terra::extract(
   ID = FALSE
 ) %>%
   arrange(
-    cluster, distance
+    cluster, lyr1
   ) %>%
   group_by(
     cluster
   ) %>%
   mutate(
-    rank = rank(distance, ties.method = "first"),
+    rank = rank(lyr1, ties.method = "first"),
     label = paste0(cluster, letters[rank])
   ) %>%
   ungroup()
@@ -228,9 +230,12 @@ all_pts <- terra::extract(
 
 plot(
   sampling_input_field[[2]],
-  col = gray.colors(100),
-  start = 0,
-  end = 1
+  col = gray.colors(
+    100,
+    start = 0,
+    end = 1
+    ),
+  buffer = TRUE
   )
 plot(
   as.polygons(
@@ -241,7 +246,7 @@ plot(
   alpha = 0.25,
   col = carto_pal(9, "Bold"),
   legend = FALSE,
-  border = "darkgrey"
+  border = "black"
 )
 plot(study_areas[study_area_idx, ], add = TRUE, lty = "32")
 plot(all_pts, pch = 21, bg = "white", add = TRUE)
