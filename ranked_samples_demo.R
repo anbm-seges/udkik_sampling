@@ -190,20 +190,7 @@ for (i in seq_len(nrow(myclusters$points))) {
   }
 }
 
-
-plot(clusters_i$clusters)
-plot(rast_i)
-points(
-  clusters_i$points,
-  pch = 21,
-  bg = "white"
-)
-
 extra_pts <- do.call(rbind, extra_pts)
-
-plot(sampling_input_field[[1]])
-plot(myclusters$points, pch = 21, bg = "red", add = TRUE)
-plot(extra_pts, pch = 21, bg = "white", add = TRUE)
 
 all_pts <- bind_spat_rows(
   myclusters$points,
