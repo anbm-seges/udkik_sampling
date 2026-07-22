@@ -177,10 +177,11 @@ for (i in seq_len(nrow(myclusters$points))) {
       input = rast_i,
       clusters = round(cluster_areas[i] / (100/3) ),
       use_xy = TRUE,
+      only_xy = TRUE,
       xy_weight = 2,
       sp_pts = TRUE,
       candidates = candidates_i,
-      weights = distances_i
+      weights = sqrt(distances_i)
     )
 
     extra_pts[[list_index]] <- clusters_i$points %>%
@@ -260,7 +261,5 @@ text(
   hw = 0.1,
   halo = TRUE
 )
-
-# Implement candidates
 
 # END

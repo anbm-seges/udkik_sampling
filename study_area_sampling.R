@@ -8,6 +8,8 @@ library(tidyterra)
 library(vctrs)
 library(rcartocolor)
 
+source("function_colors.R")
+
 dir_data <- "C:/Users/anbm/OneDrive - SEGES Innovation PS/UDKIK/Data/"
 dir_sensors <- paste0(dir_data, "/Sensors data/TIFF Files/") |>
   list.dirs(
@@ -220,7 +222,26 @@ lapply(
         "Study area ",
         study_area_idx,
         ": Clusters based on 10 m rasters"
-      )
+      ),
+      col = get_map_colors(
+        L = 80,
+        n = nrow(list_clusters_10m[[study_area_idx]]$points),
+        minC = 25,
+        maxC = 75
+      ),
+      ext = ext(study_areas[study_area_idx,]),
+      buffer = TRUE
+    )
+    plot(
+      as.polygons(
+        list_clusters_10m[[study_area_idx]]$clusters
+      ),
+      1,
+      add = TRUE,
+      alpha = 0.25,
+      col = NA,
+      legend = FALSE,
+      border = "black"
     )
     plot(
       list_clusters_10m[[study_area_idx]]$points,
@@ -261,13 +282,34 @@ lapply(
         "Study area ",
         study_area_idx,
         ": Grid samples"
-      )
+      ),
+      col = get_map_colors(
+        L = 80,
+        n = nrow(list_clusters_10m[[study_area_idx]]$points),
+        minC = 25,
+        maxC = 75
+      ),
+      ext = ext(study_areas[study_area_idx,]),
+      alpha = 0.5,
+      buffer = TRUE
+    )
+    plot(
+      as.polygons(
+        list_clusters_10m[[study_area_idx]]$clusters
+      ),
+      1,
+      add = TRUE,
+      alpha = 0.25,
+      col = NA,
+      legend = FALSE,
+      border = "gray50"
     )
     plot(
       list_grid_samples[[study_area_idx]],
-      pch = 21,
-      bg = "grey",
-      add = TRUE
+      pch = 24,
+      bg = "yellow",
+      add = TRUE,
+      cex = 0.6
     )
     plot(
       list_clusters_10m[[study_area_idx]]$points,
@@ -311,7 +353,26 @@ lapply(
         "Study area ",
         study_area_idx,
         ": Clusters based on sensors"
-      )
+      ),
+      col = get_map_colors(
+        L = 80,
+        n = nrow(list_clusters_sensor[[study_area_idx]]$points),
+        minC = 25,
+        maxC = 75
+      ),
+      ext = ext(study_areas[study_area_idx,]),
+      buffer = TRUE
+    )
+    plot(
+      as.polygons(
+        list_clusters_sensor[[study_area_idx]]$clusters
+      ),
+      1,
+      add = TRUE,
+      alpha = 0.25,
+      col = NA,
+      legend = FALSE,
+      border = "black"
     )
     plot(
       list_clusters_sensor[[study_area_idx]]$points,
@@ -354,5 +415,7 @@ n_samples_grid <- lapply(
   unlist()
 
 sum(n_samples_big*2450) + sum(n_samples_grid*375)
+
+# Eliminate duplicate grid points?
 
 # END
