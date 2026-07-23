@@ -3,12 +3,11 @@ title: "Ranked Sampling Workflow for UDKIK"
 author: "Anders Bjørn Møller, SEGES"
 date: "`r Sys.Date()`"
 output:
-  html_document:
+  html_document: 
     toc: true
-    toc_depth: 3
-    number_sections: false
     fig_width: 10
     fig_height: 7
+    keep_md: true
 params:
   data_dir: "C:/Users/anbm/OneDrive - SEGES Innovation PS/UDKIK/Data/"
   study_area_idx: 3
@@ -16,22 +15,21 @@ params:
 
 ## Purpose
 
-This document presents the ranked sampling workflow used in the demo script.
-The goal is to place one primary sampling point per cluster, add extra points in larger clusters, and rank the points by distance to the cluster center.
+This document presents the ranked sampling workflow used in the demo script. The goal is to place one primary sampling point per cluster, add extra points in larger clusters, and rank the points by distance to the cluster center.
 
 ## Workflow Overview
 
 The workflow follows these stages:
 
-1. Read study area and raster inputs.
-2. Crop and mask rasters to one field.
-3. Transform input layers to percentiles.
-4. Clamp outliers to reduce extreme values.
-5. Build a candidate mask for valid sample locations.
-6. Run primary k-means sampling with spatial weighting.
-7. Add extra points inside large clusters.
-8. Rank points within each cluster by center distance.
-9. Plot final labeled points.
+1.  Read study area and raster inputs.
+2.  Crop and mask rasters to one field.
+3.  Transform input layers to percentiles.
+4.  Clamp outliers to reduce extreme values.
+5.  Build a candidate mask for valid sample locations.
+6.  Run primary k-means sampling with spatial weighting.
+7.  Add extra points inside large clusters.
+8.  Rank points within each cluster by center distance.
+9.  Plot final labeled points.
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
@@ -366,6 +364,6 @@ cat("Additional points:", nrow(all_pts) - nrow(myclusters$points), "\n")
 
 ## Notes
 
-- This report is designed for one study area at a time using params$study_area_idx.
-- Use the same random seed to keep results reproducible.
-- If data paths change across machines, only params$data_dir needs to be updated.
+-   This report is designed for one study area at a time using params\$study_area_idx.
+-   Use the same random seed to keep results reproducible.
+-   If data paths change across machines, only params\$data_dir needs to be updated.
