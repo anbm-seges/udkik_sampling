@@ -179,38 +179,49 @@ candidates_field <- ifel(
   NA,
   1
 ) |>
-  focal(w = 3, "mean") |>
   mask(
-    study_areas[study_area_idx, ] |> as.lines(),
-    inverse = TRUE
-  )
+    study_areas[study_area_idx, ] |>
+      buffer(width = -10),
+    touches = FALSE
+)
 
-plot(candidates_field, main = "Candidate sampling pixels")
+plot(
+  candidates_field, main = "Candidate sampling pixels",
+  extent = study_areas[study_area_idx, ],
+  buffer = TRUE
+)
 plot(study_areas[study_area_idx, ], add = TRUE)
 ```
 
 <img src="ranked_samples_workflow_files/figure-html/candidates-1.png" alt="" width="60%" style="display: block; margin: auto;" />
 
-The candidate mask avoids border effects and excludes unsuitable edge cells.
-
 ## 5. Primary Cluster Sampling
+
+The sampling zones and primary sampling locations are generated based on k-means clustering, using the package `samplekmeans`. The number of clusters is determined by the size of the study area, with one cluster per ha (rounded off).
+
+The parameter `xy_weight` is set to 2, which means that the spatial coordinates are weighted twice as much as the input raster values. This encourages clusters to be more spatially compact, while still considering the input raster values. The `candidates` parameter ensures that only valid sampling locations are selected, and the `min_cluster_size` parameter ensures that clusters with fewer than 50 pixels (i.e. areas less than 0.5 ha) are not produced.
 
 
 ``` r
 myclusters <- sample_kmeans(
   input = sampling_input_pctile,
-  clusters = round(study_areas[study_area_idx, ]$Shape_Area / 10000),
+  clusters = round(
+    study_areas[study_area_idx, ]$Shape_Area * sampling_zones_ha / 10000
+  ),
   use_xy = TRUE,
   sp_pts = TRUE,
   xy_weight = 2,
   candidates = candidates_field,
-  min_cluster_size = 50
+  min_cluster_size = 50,
+  seed = 5082
 )
 
 plot(
   as.factor(myclusters$clusters),
   col = carto_pal(9, "Bold"),
-  main = "Primary clusters"
+  main = "Primary clusters",
+  extent = study_areas[study_area_idx, ],
+  buffer = TRUE
 )
 plot(myclusters$points, pch = 21, bg = "white", add = TRUE)
 plot(study_areas[study_area_idx, ], add = TRUE)
