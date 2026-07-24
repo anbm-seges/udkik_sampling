@@ -15,7 +15,9 @@ params:
 
 ## Purpose
 
-This document presents the ranked sampling workflow used in the demo script. The goal is to place one primary sampling point per cluster, add extra points in larger clusters, and rank the points by distance to the cluster center.
+This document presents a workflow to generate ranked sampling points. The goal is to place one primary sampling point per cluster, add alternative sampling points within the clusters, depending on their sizes, and rank the points by distance to the cluster center.
+
+During field sampling, one sample should be collected per cluster. The primary sampling point is the first choice, and if it is not accessible, or outside the area of interest, the alternative sampling points in the same cluster should be used. The alternative sampling points should be prioritized according to their rank, indicated by a letter suffix (e.g., 7a, 7b, 7c).
 
 ## Workflow Overview
 

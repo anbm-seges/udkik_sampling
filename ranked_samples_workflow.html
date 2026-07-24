@@ -11,7 +11,7 @@
 
 <meta name="author" content="Anders Bjørn Møller, SEGES" />
 
-<meta name="date" content="2026-07-23" />
+<meta name="date" content="2026-07-24" />
 
 <title>Ranked Sampling Workflow for UDKIK</title>
 
@@ -352,7 +352,7 @@ display: none;
 
 <h1 class="title toc-ignore">Ranked Sampling Workflow for UDKIK</h1>
 <h4 class="author">Anders Bjørn Møller, SEGES</h4>
-<h4 class="date">2026-07-23</h4>
+<h4 class="date">2026-07-24</h4>
 
 </div>
 
@@ -384,10 +384,16 @@ Quick Summary Metrics</a></li>
 
 <div id="purpose" class="section level2">
 <h2>Purpose</h2>
-<p>This document presents the ranked sampling workflow used in the demo
-script. The goal is to place one primary sampling point per cluster, add
-extra points in larger clusters, and rank the points by distance to the
-cluster center.</p>
+<p>This document presents a workflow to generate ranked sampling points.
+The goal is to place one primary sampling point per cluster, add
+alternative sampling points within the clusters, depending on their
+sizes, and rank the points by distance to the cluster center.</p>
+<p>During field sampling, one sample should be collected per cluster.
+The primary sampling point is the first choice, and if it is not
+accessible, or outside the area of interest, the alternative sampling
+points in the same cluster should be used. The alternative sampling
+points should be prioritized according to their rank, indicated by a
+letter suffix (e.g., 7a, 7b, 7c).</p>
 </div>
 <div id="workflow-overview" class="section level2">
 <h2>Workflow Overview</h2>
@@ -406,6 +412,17 @@ cluster center.</p>
 </div>
 <div id="parameters-and-input-validation" class="section level2">
 <h2>Parameters and Input Validation</h2>
+<p>The workflow is demonstrated for study area 3 in the UDKIK project,
+but it is applicable to any area within the coverage of the input
+rasters. In this example, the input rasters include elevation, peat
+probability, and the vertical distance to the channel network (vdtochn).
+The workflow can be adapted to other raster inputs as needed.</p>
+<p>The parameters <code>sampling_zones_ha</code> and
+<code>sampling_points_ha</code> control the number of clusters and
+sampling locations per ha, respectively. The number of clusters is
+determined by the size of the study area (one cluster per ha). The
+number of sampling locations depends on the areas of the clusters, set
+to 4 sampling locations per ha in this example.</p>
 <pre class="r"><code>dir_data &lt;- params$data_dir
 study_area_idx &lt;- params$study_area_idx
 

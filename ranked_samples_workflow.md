@@ -15,7 +15,9 @@ params:
 
 ## Purpose
 
-This document presents the ranked sampling workflow used in the demo script. The goal is to place one primary sampling point per cluster, add extra points in larger clusters, and rank the points by distance to the cluster center.
+This document presents a workflow to generate ranked sampling points. The goal is to place one primary sampling point per cluster, add alternative sampling points within the clusters, depending on their sizes, and rank the points by distance to the cluster center.
+
+During field sampling, one sample should be collected per cluster. The primary sampling point is the first choice, and if it is not accessible, or outside the area of interest, the alternative sampling points in the same cluster should be used. The alternative sampling points should be prioritized according to their rank, indicated by a letter suffix (e.g., 7a, 7b, 7c).
 
 ## Workflow Overview
 
@@ -34,6 +36,10 @@ The workflow follows these stages:
 
 
 ## Parameters and Input Validation
+
+The workflow is demonstrated for study area 3 in the UDKIK project, but it is applicable to any area within the coverage of the input rasters. In this example, the input rasters include elevation, peat probability, and the vertical distance to the channel network (vdtochn). The workflow can be adapted to other raster inputs as needed.
+
+The parameters `sampling_zones_ha` and `sampling_points_ha` control the number of clusters and sampling locations per ha, respectively. The number of clusters is determined by the size of the study area (one cluster per ha). The number of sampling locations depends on the areas of the clusters, set to 4 sampling locations per ha in this example.
 
 
 ``` r
