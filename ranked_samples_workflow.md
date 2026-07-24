@@ -93,14 +93,12 @@ plot(study_areas[study_area_idx, ], main = paste("Study area", study_area_idx))
 
 <img src="ranked_samples_workflow_files/figure-html/study-area-1.png" alt="" width="60%" style="display: block; margin: auto;" />
 
-This selects one study area polygon for demonstration.
-
 ## 2. Load and Subset Raster Inputs
+
+The input rasters are cropped and masked to the selected study area. Raster cells are omitted if they contain NA values in any of the input layers.
 
 
 ``` r
-sampling_input <- rast(sampling_paths)
-
 sampling_input_field <- crop(
   sampling_input,
   study_areas[study_area_idx, ]
@@ -116,14 +114,24 @@ sampling_input_field <- ifel(
   NA
 )
 
-plot(sampling_input_field)
+names(sampling_input_field) <- names(sampling_input)
+
+plot(sampling_input_field,
+     extent = study_areas[study_area_idx, ],
+  fun = function() {
+    plot(study_areas[study_area_idx, ], add = TRUE)
+  },
+  buffer = TRUE
+)
 ```
 
 <img src="ranked_samples_workflow_files/figure-html/load-rasters-1.png" alt="" width="80%" style="display: block; margin: auto;" />
 
-Cropping and masking keep only pixels inside the selected field.
-
 ## 3. Percentile Transformation and Outlier Clamp
+
+The input layers are transformed to percentiles using the empirical cumulative distribution function (ECDF). The resulting values are also clamped to three standard deviations from the mean to reduce the influence of extreme values. This is mainly relevant if any of the input layers contain many duplicate values, which can lead to large jumps in the ECDF.
+
+The transformation into percentiles helps to make cluster sizes more uniform and counteracts the potential effects of extreme values.
 
 
 ``` r
@@ -146,14 +154,23 @@ sampling_input_pctile <- sampling_input_pctile |>
     upper = field_means + field_sds * 3
   )
 
-plot(sampling_input_pctile)
+names(sampling_input_pctile) <- names(sampling_input_field)
+
+plot(
+  sampling_input_pctile,
+  extent = study_areas[study_area_idx, ],
+  fun = function() {
+    plot(study_areas[study_area_idx, ], add = TRUE)
+  },
+  buffer = TRUE
+)
 ```
 
 <img src="ranked_samples_workflow_files/figure-html/pctile-and-clamp-1.png" alt="" width="80%" style="display: block; margin: auto;" />
 
-Percentiles normalize layers to a comparable scale. Clamping reduces the effect of extreme values.
-
 ## 4. Candidate Sampling Pixels
+
+The selection of sampling points is restricted to areas more than 10 m from the field boundaries. All pixels in the input are used for identifying clusters, but sampling locations are limited to the candidate pixels.
 
 
 ``` r
