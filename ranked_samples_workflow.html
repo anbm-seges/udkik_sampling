@@ -436,28 +436,19 @@ sampling_paths &lt;- file.path(
   )
 )
 
-checks &lt;- tibble::tibble(
-  item = c(&quot;Study areas&quot;, &quot;Terrain&quot;, &quot;Peat probability&quot;, &quot;Hydrology&quot;),
-  path = c(study_area_path, sampling_paths),
-  exists = file.exists(c(study_area_path, sampling_paths))
-)
+sampling_input &lt;- rast(sampling_paths)
 
-checks</code></pre>
-<pre><code>## # A tibble: 4 × 3
-##   item             path                                                   exists
-##   &lt;chr&gt;            &lt;chr&gt;                                                  &lt;lgl&gt; 
-## 1 Study areas      C:/Users/anbm/OneDrive - SEGES Innovation PS/UDKIK/Da… TRUE  
-## 2 Terrain          C:/Users/anbm/OneDrive - SEGES Innovation PS/UDKIK/Da… TRUE  
-## 3 Peat probability C:/Users/anbm/OneDrive - SEGES Innovation PS/UDKIK/Da… TRUE  
-## 4 Hydrology        C:/Users/anbm/OneDrive - SEGES Innovation PS/UDKIK/Da… TRUE</code></pre>
-<pre class="r"><code>can_run &lt;- all(checks$exists)
+names(sampling_input) &lt;- basename(sampling_paths) |&gt;
+  tools::file_path_sans_ext()
 
-if (!can_run) {
-  cat(&quot;Missing one or more required data files. Update params$data_dir and knit again.\n&quot;)
-}</code></pre>
+sampling_zones_ha &lt;- 1
+sampling_points_ha &lt;- 4</code></pre>
 </div>
 <div id="study-area-selection" class="section level2">
 <h2>1. Study Area Selection</h2>
+<p>The study area covers 8.9 ha, and is divided into two agricultural
+fields. The variable <code>study_area_idx</code> is an integer for
+indexing the study area polygons.</p>
 <pre class="r"><code>study_areas &lt;- vect(study_area_path)
 
 values(study_areas)</code></pre>

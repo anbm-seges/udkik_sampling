@@ -66,6 +66,10 @@ index_to_letters <- function(n) {
 
 ## Parameters and Input Validation
 
+The workflow is demonstrated for study area 3 in the UDKIK project, but it is applicable to any area within the coverage of the input rasters. In this example, the input rasters include elevation, peat probability, and the vertical distance to the channel network (vdtochn). The workflow can be adapted to other raster inputs as needed.
+
+The parameters `sampling_zones_ha` and `sampling_points_ha` control the number of clusters and sampling locations per ha, respectively. The number of clusters is determined by the size of the study area (one cluster per ha). The number of sampling locations depends on the areas of the clusters, set to 4 sampling locations per ha in this example.
+
 ```{r preflight}
 dir_data <- params$data_dir
 study_area_idx <- params$study_area_idx
@@ -80,6 +84,16 @@ sampling_paths <- file.path(
   )
 )
 
+sampling_input <- rast(sampling_paths)
+
+names(sampling_input) <- basename(sampling_paths) |>
+  tools::file_path_sans_ext()
+
+sampling_zones_ha <- 1
+sampling_points_ha <- 4
+```
+
+```{r stop-if-missing, include=FALSE}
 checks <- tibble::tibble(
   item = c("Study areas", "Terrain", "Peat probability", "Hydrology"),
   path = c(study_area_path, sampling_paths),
@@ -93,9 +107,7 @@ can_run <- all(checks$exists)
 if (!can_run) {
   cat("Missing one or more required data files. Update params$data_dir and knit again.\n")
 }
-```
 
-```{r stop-if-missing, include=FALSE}
 if (!can_run) {
   knitr::knit_exit()
 }

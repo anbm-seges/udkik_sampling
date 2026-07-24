@@ -56,36 +56,20 @@ sampling_paths <- file.path(
   )
 )
 
-checks <- tibble::tibble(
-  item = c("Study areas", "Terrain", "Peat probability", "Hydrology"),
-  path = c(study_area_path, sampling_paths),
-  exists = file.exists(c(study_area_path, sampling_paths))
-)
+sampling_input <- rast(sampling_paths)
 
-checks
-```
+names(sampling_input) <- basename(sampling_paths) |>
+  tools::file_path_sans_ext()
 
-```
-## # A tibble: 4 × 3
-##   item             path                                                   exists
-##   <chr>            <chr>                                                  <lgl> 
-## 1 Study areas      C:/Users/anbm/OneDrive - SEGES Innovation PS/UDKIK/Da… TRUE  
-## 2 Terrain          C:/Users/anbm/OneDrive - SEGES Innovation PS/UDKIK/Da… TRUE  
-## 3 Peat probability C:/Users/anbm/OneDrive - SEGES Innovation PS/UDKIK/Da… TRUE  
-## 4 Hydrology        C:/Users/anbm/OneDrive - SEGES Innovation PS/UDKIK/Da… TRUE
-```
-
-``` r
-can_run <- all(checks$exists)
-
-if (!can_run) {
-  cat("Missing one or more required data files. Update params$data_dir and knit again.\n")
-}
+sampling_zones_ha <- 1
+sampling_points_ha <- 4
 ```
 
 
 
 ## 1. Study Area Selection
+
+The study area covers 8.9 ha, and is divided into two agricultural fields. The variable `study_area_idx` is an integer for indexing the study area polygons.
 
 
 ``` r
