@@ -366,11 +366,9 @@ all_pts <- terra::extract(
 
 all_pts |>
   as.data.frame() |>
-  select(cluster, rank, label, lyr1) |>
-  head(15)
+  select(cluster, rank, label, distance) |>
+  head(10)
 ```
-
-The point closest to each cluster center is rank 1 (for example 7a), then rank 2 (7b), and so on.
 
 ## 8. Final Presentation Map
 

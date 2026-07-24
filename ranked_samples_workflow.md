@@ -1,7 +1,7 @@
 ---
 title: "Ranked Sampling Workflow for UDKIK"
 author: "Anders Bjørn Møller, SEGES"
-date: "2026-07-23"
+date: "2026-07-24"
 output:
   html_document: 
     toc: true
@@ -419,14 +419,15 @@ summary_tbl
 
 ```
 ##   cluster n_points
-## 1       1        3
-## 2       2        4
-## 3       3        4
+## 1       1        4
+## 2       2        6
+## 3       3        3
 ## 4       4        3
 ## 5       5        4
-## 6       6        5
-## 7       7        4
-## 8       8        5
+## 6       6        4
+## 7       7        3
+## 8       8        4
+## 9       9        2
 ```
 
 ``` r
@@ -434,7 +435,7 @@ cat("Total points:", nrow(all_pts), "\n")
 ```
 
 ```
-## Total points: 32
+## Total points: 33
 ```
 
 ``` r
@@ -442,7 +443,7 @@ cat("Primary points:", nrow(myclusters$points), "\n")
 ```
 
 ```
-## Primary points: 8
+## Primary points: 9
 ```
 
 ``` r
