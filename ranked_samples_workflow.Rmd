@@ -283,28 +283,39 @@ for (i in seq_len(nrow(myclusters$points))) {
       inverse = TRUE
     ) |>
       crop(rast_i)
-
-    distances_i <- mask(
+    
+    distances_i <- distance(
       myclusters$distances,
-      mask = myclusters$clusters,
-      maskvalue = cid,
-      inverse = TRUE
-    ) |>
+      myclusters$points
+      ) |>
+      mask(
+        mask = myclusters$clusters,
+        maskvalue = cid,
+        inverse = TRUE
+        ) |>
+      sqrt() |>
       crop(rast_i)
-
+    
     clusters_i <- sample_kmeans(
       input = rast_i,
-      clusters = round(csize / (100 / 3)),
+      clusters = round(csize / (100 / sampling_points_ha)),
       use_xy = TRUE,
       only_xy = TRUE,
-      xy_weight = 2,
       sp_pts = TRUE,
       candidates = candidates_i,
-      weights = sqrt(distances_i)
+      seed = 5082
     )
 
     extra_pts[[list_index]] <- clusters_i$points |>
-      mutate(cluster = cid)
+      terra::extract(
+        x = distances_i,
+        bind = TRUE,
+        ID = FALSE
+      ) |>
+      mutate(cluster = cid) |>
+      arrange(distance) |>
+      slice(-1) |>
+      select(-distance)
 
     list_index <- list_index + 1
   }
@@ -314,9 +325,9 @@ n_extra_sets <- length(extra_pts)
 n_extra_sets
 ```
 
-Larger clusters receive additional points, with higher preference for pixels farther from the primary center.
-
 ## 7. Rank and Label All Points
+
+The alternative sampling points are combined with the primary sampling points. The points are then ranked by their feature space distance to the primary sampling point, with preference given to the closest/most similar locations.
 
 ```{r ranking}
 if (length(extra_pts) > 0) {
@@ -344,10 +355,10 @@ all_pts <- terra::extract(
   bind = TRUE,
   ID = FALSE
 ) |>
-  arrange(cluster, lyr1) |>
+  arrange(cluster, distance) |>
   group_by(cluster) |>
   mutate(
-    rank = rank(lyr1, ties.method = "first"),
+    rank = rank(distance, ties.method = "first"),
     suffix = index_to_letters(rank),
     label = paste0(cluster, suffix)
   ) |>

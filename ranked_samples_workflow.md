@@ -307,12 +307,12 @@ n_extra_sets
 ```
 
 ```
-## [1] 8
+## [1] 9
 ```
 
-Larger clusters receive additional points, with higher preference for pixels farther from the primary center.
-
 ## 7. Rank and Label All Points
+
+The alternative sampling points are combined with the primary sampling points. The points are then ranked by their feature space distance to the primary sampling point, with preference given to the closest/most similar locations.
 
 
 ``` r
@@ -341,10 +341,10 @@ all_pts <- terra::extract(
   bind = TRUE,
   ID = FALSE
 ) |>
-  arrange(cluster, lyr1) |>
+  arrange(cluster, distance) |>
   group_by(cluster) |>
   mutate(
-    rank = rank(lyr1, ties.method = "first"),
+    rank = rank(distance, ties.method = "first"),
     suffix = index_to_letters(rank),
     label = paste0(cluster, suffix)
   ) |>
@@ -352,30 +352,23 @@ all_pts <- terra::extract(
 
 all_pts |>
   as.data.frame() |>
-  select(cluster, rank, label, lyr1) |>
-  head(15)
+  select(cluster, rank, label, distance) |>
+  head(10)
 ```
 
 ```
-##    cluster rank label      lyr1
-## 1        1    1    1a 0.2005391
-## 2        1    2    1b 0.4371822
-## 3        1    3    1c 0.9879134
-## 4        2    1    2a 0.4430538
-## 5        2    2    2b 1.2417856
-## 6        2    3    2c 1.5929462
-## 7        2    4    2d 2.1277796
-## 8        3    1    3a 0.1863242
-## 9        3    2    3b 0.6721634
-## 10       3    3    3c 0.6913257
-## 11       3    4    3d 2.5686310
-## 12       4    1    4a 0.3793880
-## 13       4    2    4b 1.0001651
-## 14       4    3    4c 1.4629183
-## 15       5    1    5a 0.2898975
+##    cluster rank label  distance
+## 1        1    1    1a 0.2174912
+## 2        1    2    1b 0.8396487
+## 3        1    3    1c 0.9390126
+## 4        1    4    1d 0.9419931
+## 5        2    1    2a 0.2531433
+## 6        2    2    2b 0.7857157
+## 7        2    3    2c 0.9228438
+## 8        2    4    2d 0.9868779
+## 9        2    5    2e 1.1887463
+## 10       2    6    2f 1.2887704
 ```
-
-The point closest to each cluster center is rank 1 (for example 7a), then rank 2 (7b), and so on.
 
 ## 8. Final Presentation Map
 
