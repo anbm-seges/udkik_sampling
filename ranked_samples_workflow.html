@@ -621,7 +621,7 @@ for (i in seq_len(nrow(myclusters$points))) {
   cid &lt;- myclusters$points$ID[i]
   csize &lt;- as.numeric(cluster_areas[as.character(cid)])
 
-  if (!is.na(csize) &amp;&amp; csize &gt; 50) {
+  if (!is.na(csize) &amp;&amp; csize &gt;= (100 / sampling_points_ha)) {
     rast_i &lt;- mask(
       sampling_input_pctile,
       mask = myclusters$clusters,
@@ -637,28 +637,39 @@ for (i in seq_len(nrow(myclusters$points))) {
       inverse = TRUE
     ) |&gt;
       crop(rast_i)
-
-    distances_i &lt;- mask(
+    
+    distances_i &lt;- distance(
       myclusters$distances,
-      mask = myclusters$clusters,
-      maskvalue = cid,
-      inverse = TRUE
-    ) |&gt;
+      myclusters$points
+      ) |&gt;
+      mask(
+        mask = myclusters$clusters,
+        maskvalue = cid,
+        inverse = TRUE
+        ) |&gt;
+      sqrt() |&gt;
       crop(rast_i)
-
+    
     clusters_i &lt;- sample_kmeans(
       input = rast_i,
-      clusters = round(csize / (100 / 3)),
+      clusters = round(csize / (100 / sampling_points_ha)),
       use_xy = TRUE,
       only_xy = TRUE,
-      xy_weight = 2,
       sp_pts = TRUE,
       candidates = candidates_i,
-      weights = sqrt(distances_i)
+      seed = 5082
     )
 
     extra_pts[[list_index]] &lt;- clusters_i$points |&gt;
-      mutate(cluster = cid)
+      terra::extract(
+        x = distances_i,
+        bind = TRUE,
+        ID = FALSE
+      ) |&gt;
+      mutate(cluster = cid) |&gt;
+      arrange(distance) |&gt;
+      slice(-1) |&gt;
+      select(-distance)
 
     list_index &lt;- list_index + 1
   }

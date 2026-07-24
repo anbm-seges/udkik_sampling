@@ -267,7 +267,7 @@ for (i in seq_len(nrow(myclusters$points))) {
   cid <- myclusters$points$ID[i]
   csize <- as.numeric(cluster_areas[as.character(cid)])
 
-  if (!is.na(csize) && csize > 50) {
+  if (!is.na(csize) && csize >= (100 / sampling_points_ha)) {
     rast_i <- mask(
       sampling_input_pctile,
       mask = myclusters$clusters,
