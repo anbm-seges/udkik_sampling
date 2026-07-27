@@ -15,19 +15,19 @@ params:
 
 ## Purpose
 
-This document presents a workflow to generate ranked sampling points. The goal is to place one primary sampling point per cluster, add alternative sampling points within the clusters, depending on their sizes, and rank the points by distance to the cluster center.
+This document presents a workflow to generate ranked sampling points. The goal is to place one primary sampling point per cluster, add alternative sampling points within the clusters, depending on their sizes, and rank the points by feature space distance to the cluster center.
 
-During field sampling, one sample should be collected per cluster. The primary sampling point is the first choice, and if it is not accessible, or outside the area of interest, the alternative sampling points in the same cluster should be used. The alternative sampling points should be prioritized according to their rank, indicated by a letter suffix (e.g., 7a, 7b, 7c).
+During field sampling, one sample should be collected from each cluster. The primary sampling point (suffix "a") is the first choice, provided that it is accessible and within the area of interest. Otherwise, one of the alternative sampling points in the same cluster should be used. The alternative sampling points should be prioritized according to their rank, indicated by a letter suffix (e.g., 7a, 7b, 7c). The chosen alternative sampling point must also be accessible and within the area of interest.
 
 ## Workflow Overview
 
 The workflow follows these stages:
 
 1.  Read study area and raster inputs.
-2.  Crop and mask rasters to one field.
+2.  Crop and mask raster layers to one field.
 3.  Transform input layers to percentiles.
 4.  Clamp outliers to reduce extreme values.
-5.  Build a candidate mask for valid sample locations.
+5.  Build a candidate mask for valid sampling locations.
 6.  Run primary k-means sampling with spatial weighting.
 7.  Add extra points inside large clusters.
 8.  Rank points within each cluster by center distance.
@@ -66,7 +66,7 @@ index_to_letters <- function(n) {
 
 ## Parameters and Input Validation
 
-The workflow is demonstrated for study area 3 in the UDKIK project, but it is applicable to any area within the coverage of the input rasters. In this example, the input rasters include elevation, peat probability, and the vertical distance to the channel network (vdtochn). The workflow can be adapted to other raster inputs as needed.
+The workflow is demonstrated for Study Area 3 in the UDKIK project, but it is applicable to any area within the coverage of the input rasters. In this example, the input rasters include elevation, peat probability, and the vertical distance to the channel network (vdtochn). The workflow can be adapted to other raster inputs as needed.
 
 The parameters `sampling_zones_ha` and `sampling_points_ha` control the number of clusters and sampling locations per ha, respectively. The number of clusters is determined by the size of the study area (one cluster per ha). The number of sampling locations depends on the areas of the clusters, set to 4 sampling locations per ha in this example.
 
@@ -115,7 +115,7 @@ if (!can_run) {
 
 ## 1. Study Area Selection
 
-The study area covers 8.9 ha, and is divided into two agricultural fields. The variable `study_area_idx` is an integer for indexing the study area polygons.
+The study area covers 9 ha, and is divided into two agricultural fields. The variable `study_area_idx` is an integer for indexing the study area polygons.
 
 ```{r study-area, out.width = "60%"}
 study_areas <- vect(study_area_path)
@@ -196,7 +196,7 @@ plot(
 
 ## 4. Candidate Sampling Pixels
 
-The selection of sampling points is restricted to areas more than 10 m from the field boundaries. All pixels in the input are used for identifying clusters, but sampling locations are limited to the candidate pixels.
+The selection of potential sampling locations is restricted to areas more than 10 m from the field boundaries. All pixels in the input are used for identifying clusters, but sampling locations are limited to the candidate pixels. This helps to avoid sampling locations close to the field edges, which may not be representative of the general field conditions.
 
 ```{r candidates, out.width = "60%"}
 candidates_field <- ifel(
@@ -220,9 +220,9 @@ plot(study_areas[study_area_idx, ], add = TRUE)
 
 ## 5. Primary Cluster Sampling
 
-The sampling zones and primary sampling locations are generated based on k-means clustering, using the package `samplekmeans`. The number of clusters is determined by the size of the study area, with one cluster per ha (rounded off).
+The sampling zones and primary sampling locations are generated based on k-means clustering, using the package `samplekmeans`. The number of clusters is determined by the size of the study area, with one cluster per ha (rounded off). The primary sampling locations represent the viable pixels with the shortest distances to the cluster centroids, selected from the candidate pixels. The clustering is performed using both the input raster values and the spatial coordinates of the pixels, with a higher weight given to the spatial coordinates. This ensures that the clusters are more coherent in geographic space, while still considering the input raster values.
 
-The parameter `xy_weight` is set to 2, which means that the spatial coordinates are weighted twice as much as the input raster values. This encourages clusters to be more spatially compact, while still considering the input raster values. The `candidates` parameter ensures that only valid sampling locations are selected, and the `min_cluster_size` parameter ensures that clusters with fewer than 50 pixels (i.e. areas less than 0.5 ha) are not produced.
+The parameter `xy_weight` is set to 2, which means that the spatial coordinates are weighted twice as much as the input raster values. The `candidates` parameter ensures that only valid sampling locations are selected, and the `min_cluster_size` parameter ensures that clusters with fewer than 50 pixels (i.e. areas less than 0.5 ha) are not produced. This prevents the creation of small clusters that are not meaningful for sampling.
 
 ```{r primary-clustering, out.width = "60%"}
 myclusters <- sample_kmeans(
@@ -327,7 +327,7 @@ n_extra_sets
 
 ## 7. Rank and Label All Points
 
-The alternative sampling points are combined with the primary sampling points. The points are then ranked by their feature space distance to the primary sampling point, with preference given to the closest/most similar locations.
+The alternative sampling points are combined with the primary sampling points. The points within each zone are then ranked by their feature space distance to the primary sampling point, with preference given to the closest/most similar locations.
 
 ```{r ranking}
 if (length(extra_pts) > 0) {

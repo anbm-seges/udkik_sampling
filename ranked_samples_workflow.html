@@ -386,23 +386,26 @@ Quick Summary Metrics</a></li>
 <p>This document presents a workflow to generate ranked sampling points.
 The goal is to place one primary sampling point per cluster, add
 alternative sampling points within the clusters, depending on their
-sizes, and rank the points by distance to the cluster center.</p>
-<p>During field sampling, one sample should be collected per cluster.
-The primary sampling point is the first choice, and if it is not
-accessible, or outside the area of interest, the alternative sampling
-points in the same cluster should be used. The alternative sampling
-points should be prioritized according to their rank, indicated by a
-letter suffix (e.g., 7a, 7b, 7c).</p>
+sizes, and rank the points by feature space distance to the cluster
+center.</p>
+<p>During field sampling, one sample should be collected from each
+cluster. The primary sampling point (suffix “a”) is the first choice,
+provided that it is accessible and within the area of interest.
+Otherwise, one of the alternative sampling points in the same cluster
+should be used. The alternative sampling points should be prioritized
+according to their rank, indicated by a letter suffix (e.g., 7a, 7b,
+7c). The chosen alternative sampling point must also be accessible and
+within the area of interest.</p>
 </div>
 <div id="workflow-overview" class="section level2">
 <h2>Workflow Overview</h2>
 <p>The workflow follows these stages:</p>
 <ol style="list-style-type: decimal">
 <li>Read study area and raster inputs.</li>
-<li>Crop and mask rasters to one field.</li>
+<li>Crop and mask raster layers to one field.</li>
 <li>Transform input layers to percentiles.</li>
 <li>Clamp outliers to reduce extreme values.</li>
-<li>Build a candidate mask for valid sample locations.</li>
+<li>Build a candidate mask for valid sampling locations.</li>
 <li>Run primary k-means sampling with spatial weighting.</li>
 <li>Add extra points inside large clusters.</li>
 <li>Rank points within each cluster by center distance.</li>
@@ -411,7 +414,7 @@ letter suffix (e.g., 7a, 7b, 7c).</p>
 </div>
 <div id="parameters-and-input-validation" class="section level2">
 <h2>Parameters and Input Validation</h2>
-<p>The workflow is demonstrated for study area 3 in the UDKIK project,
+<p>The workflow is demonstrated for Study Area 3 in the UDKIK project,
 but it is applicable to any area within the coverage of the input
 rasters. In this example, the input rasters include elevation, peat
 probability, and the vertical distance to the channel network (vdtochn).
@@ -445,7 +448,7 @@ sampling_points_ha &lt;- 4</code></pre>
 </div>
 <div id="study-area-selection" class="section level2">
 <h2>1. Study Area Selection</h2>
-<p>The study area covers 8.9 ha, and is divided into two agricultural
+<p>The study area covers 9 ha, and is divided into two agricultural
 fields. The variable <code>study_area_idx</code> is an integer for
 indexing the study area polygons.</p>
 <pre class="r"><code>study_areas &lt;- vect(study_area_path)
@@ -534,10 +537,12 @@ plot(
 </div>
 <div id="candidate-sampling-pixels" class="section level2">
 <h2>4. Candidate Sampling Pixels</h2>
-<p>The selection of sampling points is restricted to areas more than 10
-m from the field boundaries. All pixels in the input are used for
-identifying clusters, but sampling locations are limited to the
-candidate pixels.</p>
+<p>The selection of potential sampling locations is restricted to areas
+more than 10 m from the field boundaries. All pixels in the input are
+used for identifying clusters, but sampling locations are limited to the
+candidate pixels. This helps to avoid sampling locations close to the
+field edges, which may not be representative of the general field
+conditions.</p>
 <pre class="r"><code>candidates_field &lt;- ifel(
   is.na(sum(sampling_input_field)),
   NA,
@@ -562,14 +567,20 @@ plot(study_areas[study_area_idx, ], add = TRUE)</code></pre>
 <p>The sampling zones and primary sampling locations are generated based
 on k-means clustering, using the package <code>samplekmeans</code>. The
 number of clusters is determined by the size of the study area, with one
-cluster per ha (rounded off).</p>
+cluster per ha (rounded off). The primary sampling locations represent
+the viable pixels with the shortest distances to the cluster centroids,
+selected from the candidate pixels. The clustering is performed using
+both the input raster values and the spatial coordinates of the pixels,
+with a higher weight given to the spatial coordinates. This ensures that
+the clusters are more coherent in geographic space, while still
+considering the input raster values.</p>
 <p>The parameter <code>xy_weight</code> is set to 2, which means that
 the spatial coordinates are weighted twice as much as the input raster
-values. This encourages clusters to be more spatially compact, while
-still considering the input raster values. The <code>candidates</code>
-parameter ensures that only valid sampling locations are selected, and
-the <code>min_cluster_size</code> parameter ensures that clusters with
-fewer than 50 pixels (i.e. areas less than 0.5 ha) are not produced.</p>
+values. The <code>candidates</code> parameter ensures that only valid
+sampling locations are selected, and the <code>min_cluster_size</code>
+parameter ensures that clusters with fewer than 50 pixels (i.e. areas
+less than 0.5 ha) are not produced. This prevents the creation of small
+clusters that are not meaningful for sampling.</p>
 <pre class="r"><code>myclusters &lt;- sample_kmeans(
   input = sampling_input_pctile,
   clusters = round(
@@ -681,9 +692,9 @@ n_extra_sets</code></pre>
 <div id="rank-and-label-all-points" class="section level2">
 <h2>7. Rank and Label All Points</h2>
 <p>The alternative sampling points are combined with the primary
-sampling points. The points are then ranked by their feature space
-distance to the primary sampling point, with preference given to the
-closest/most similar locations.</p>
+sampling points. The points within each zone are then ranked by their
+feature space distance to the primary sampling point, with preference
+given to the closest/most similar locations.</p>
 <pre class="r"><code>if (length(extra_pts) &gt; 0) {
   extra_pts &lt;- do.call(rbind, extra_pts)
 
