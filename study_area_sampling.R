@@ -43,7 +43,6 @@ list_grid_samples <- list()
 for (i in seq_len(nrow(study_areas))) {
   study_area_idx <- i
 
-
   sampling_input_field <- crop(
     sampling_input,
     study_areas[study_area_idx, ]
@@ -58,7 +57,6 @@ for (i in seq_len(nrow(study_areas))) {
     sampling_input_field,
     NA
   )
-
 
   # Transform input to percentiles to create clusters of roughly the same size.
 
@@ -76,6 +74,7 @@ for (i in seq_len(nrow(study_areas))) {
     na.rm = TRUE
   ) |>
     unlist()
+
   field_sds <- global(
     sampling_input_pctile,
     "sd",
@@ -89,42 +88,28 @@ for (i in seq_len(nrow(study_areas))) {
       upper = field_means + field_sds*3
     )
 
-
-  weights_field <- ifel(
-    is.na(sum(sampling_input_field)),
-    NA,
-    1
-  ) |>
-    focal(
-      w = 3,
-      "sum",
-      na.rm = TRUE,
-      na.policy = "omit"
-    )
-
   candidates_field <- ifel(
     is.na(sum(sampling_input_field)),
     NA,
     1
   ) |>
-    focal(w = 3, "mean") |>
     mask(
-      study_areas[study_area_idx, ] |> as.lines(),
-      inverse = TRUE
+      study_areas[study_area_idx, ] |>
+        buffer(width = -10),
+      touches = FALSE
     )
-
-
-  set.seed(124)
 
   list_clusters_10m[[study_area_idx]] <- sample_kmeans(
     input = sampling_input_pctile,
-    clusters = round(study_areas[study_area_idx, ]$Shape_Area / 10000),
+    clusters = round(
+      study_areas[study_area_idx, ]$Shape_Area * sampling_zones_ha / 10000
+    ),
     use_xy = TRUE,
     sp_pts = TRUE,
     xy_weight = 2,
     candidates = candidates_field,
-    weights = weights_field,
-    min_cluster_size = 50
+    min_cluster_size = 50,
+    seed = 5082
   )
 
   # Grid samples
@@ -181,27 +166,25 @@ for (i in seq_len(nrow(study_areas))) {
       input_sensors[[1]]
     )
 
-  weights_sensor <- weights_field |>
-    resample(
-      input_sensors[[1]]
-    ) |>
-    cover(
-      y = input_sensors[[1]]*0 + 3
-    )
-
-  set.seed(124)
-
   list_clusters_sensor[[study_area_idx]] <- sample_kmeans(
     input = input_sensors,
-    clusters = round(study_areas[study_area_idx, ]$Shape_Area / 10000),
+    clusters = round(
+      study_areas[study_area_idx, ]$Shape_Area * sampling_zones_ha / 10000
+    ),
     use_xy = TRUE,
     sp_pts = TRUE,
     xy_weight = 2,
     candidates = candidates_sensor,
-    weights = weights_sensor,
-    min_cluster_size = 1250
+    min_cluster_size = 1250,
+    seed = 5082
   )
 }
+
+# Params for colors
+
+my_L <- 80
+my_maxC <- 30
+my_minC <- 25
 
 # Plot 10 m clusters
 
