@@ -11,8 +11,8 @@ get_map_colors <- function(
 
   lab_mat <- expand.grid(
     L = L,
-    A = seq(-maxC, maxC, 2),
-    B = seq(-maxC, maxC, 2)
+    A = seq(-maxC*2, maxC*2, 2),
+    B = seq(-maxC*2, maxC*2, 2)
   ) |>
     as.matrix() |>
     LAB()
