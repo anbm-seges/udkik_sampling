@@ -16,6 +16,8 @@ dir_sensors <- paste0(dir_data, "/Sensors data/TIFF Files/") |>
     recursive = FALSE
   )
 
+sampling_zones_ha <- 1
+
 study_areas <- paste0(
   dir_data,
   "Study_areas/Study_areas.shp"
