@@ -209,10 +209,10 @@ lapply(
         ": Clusters based on 10 m rasters"
       ),
       col = get_map_colors(
-        L = 80,
         n = nrow(list_clusters_10m[[study_area_idx]]$points),
-        minC = 25,
-        maxC = 75
+        L = my_L,
+        minC = my_minC,
+        maxC = my_maxC
       ),
       ext = ext(study_areas[study_area_idx,]),
       buffer = TRUE
@@ -269,10 +269,10 @@ lapply(
         ": Grid samples"
       ),
       col = get_map_colors(
-        L = 80,
         n = nrow(list_clusters_10m[[study_area_idx]]$points),
-        minC = 25,
-        maxC = 75
+        L = my_L,
+        minC = my_minC,
+        maxC = my_maxC
       ),
       ext = ext(study_areas[study_area_idx,]),
       alpha = 0.5,
@@ -340,10 +340,10 @@ lapply(
         ": Clusters based on sensors"
       ),
       col = get_map_colors(
-        L = 80,
         n = nrow(list_clusters_sensor[[study_area_idx]]$points),
-        minC = 25,
-        maxC = 75
+        L = my_L,
+        minC = my_minC,
+        maxC = my_maxC
       ),
       ext = ext(study_areas[study_area_idx,]),
       buffer = TRUE
