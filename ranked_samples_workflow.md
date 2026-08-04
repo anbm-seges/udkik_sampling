@@ -1,7 +1,7 @@
 ---
 title: "Ranked Sampling Workflow for UDKIK"
 author: "Anders Bjørn Møller, SEGES"
-date: "2026-07-27"
+date: "2026-08-04"
 output:
   html_document: 
     toc: true
