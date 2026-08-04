@@ -39,10 +39,32 @@ The workflow follows these stages:
 
 The workflow is demonstrated for Study Area 3 in the UDKIK project, but it is applicable to any area within the coverage of the input rasters. In this example, the input rasters include elevation, peat probability, and the vertical distance to the channel network (vdtochn). The workflow can be adapted to other raster inputs as needed.
 
-The parameters `sampling_zones_ha` and `sampling_points_ha` control the number of clusters and sampling locations per ha, respectively. The number of clusters is determined by the size of the study area (one cluster per ha). The number of sampling locations depends on the areas of the clusters, set to 4 sampling locations per ha in this example.
+The parameters `sampling_zones_ha` and `sampling_points_ha` control the number of clusters and sampling locations per ha, respectively. The number of clusters is determined by the size of the study area (one cluster per ha). The number of sampling locations depends on the areas of the clusters, set to 4 sampling locations per ha in this example. The parameter `pixels_per_ha` is calculated based on the resolution of the input rasters, which is 10 m in this case, giving 100 pixels per ha.
 
 
 ``` r
+library(terra)
+library(samplekmeans)
+library(tidyverse)
+library(dplyr)
+library(tidyterra)
+library(vctrs)
+library(rcartocolor)
+
+set.seed(124)
+
+index_to_letters <- function(n) {
+  sapply(n, function(k) {
+    out <- ""
+    while (k > 0) {
+      k <- k - 1
+      out <- paste0(letters[(k %% 26) + 1], out)
+      k <- k %/% 26
+    }
+    out
+  })
+}
+
 dir_data <- params$data_dir
 study_area_idx <- params$study_area_idx
 
