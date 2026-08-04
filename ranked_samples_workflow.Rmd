@@ -235,7 +235,7 @@ myclusters <- sample_kmeans(
   sp_pts = TRUE,
   xy_weight = 2,
   candidates = candidates_field,
-  min_cluster_size = 50,
+  min_cluster_size = pixels_per_ha / (sampling_zones_ha*2),
   seed = 5082
 )
 
@@ -268,7 +268,7 @@ for (i in seq_len(nrow(myclusters$points))) {
   cid <- myclusters$points$ID[i]
   csize <- as.numeric(cluster_areas[as.character(cid)])
 
-  if (!is.na(csize) && csize >= (100 / sampling_points_ha)) {
+  if (!is.na(csize) && csize >= (pixels_per_ha / sampling_points_ha)) {
     rast_i <- mask(
       sampling_input_pctile,
       mask = myclusters$clusters,
@@ -299,7 +299,7 @@ for (i in seq_len(nrow(myclusters$points))) {
     
     clusters_i <- sample_kmeans(
       input = rast_i,
-      clusters = round(csize / (100 / sampling_points_ha)),
+      clusters = round(csize / (pixels_per_ha / sampling_points_ha)),
       use_xy = TRUE,
       only_xy = TRUE,
       sp_pts = TRUE,
