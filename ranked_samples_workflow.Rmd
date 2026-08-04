@@ -91,6 +91,7 @@ names(sampling_input) <- basename(sampling_paths) |>
 
 sampling_zones_ha <- 1
 sampling_points_ha <- 4
+pixels_per_ha <- 10000 / (prod(res(sampling_input)))
 ```
 
 ```{r stop-if-missing, include=FALSE}

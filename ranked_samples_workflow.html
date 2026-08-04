@@ -468,7 +468,8 @@ names(sampling_input) &lt;- basename(sampling_paths) |&gt;
   tools::file_path_sans_ext()
 
 sampling_zones_ha &lt;- 1
-sampling_points_ha &lt;- 4</code></pre>
+sampling_points_ha &lt;- 4
+pixels_per_ha &lt;- 10000 / (prod(res(sampling_input)))</code></pre>
 </div>
 <div id="study-area-selection" class="section level2">
 <h2>1. Study Area Selection</h2>
