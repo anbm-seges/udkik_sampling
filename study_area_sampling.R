@@ -16,7 +16,8 @@ dir_sensors <- paste0(dir_data, "/Sensors data/TIFF Files/") |>
     recursive = FALSE
   )
 
-sampling_zones_ha <- 1
+sampling_zones_ha <- 2
+
 
 study_areas <- paste0(
   dir_data,
@@ -35,6 +36,8 @@ sampling_input <- paste0(
   )
 ) |>
   rast()
+
+pixels_per_ha_10m <- 10000 / (prod(res(sampling_input)))
 
 list_clusters_10m <- list()
 list_clusters_sensor <- list()
@@ -108,7 +111,7 @@ for (i in seq_len(nrow(study_areas))) {
     sp_pts = TRUE,
     xy_weight = 2,
     candidates = candidates_field,
-    min_cluster_size = 50,
+    min_cluster_size = pixels_per_ha_10m / (sampling_zones_ha*2),
     seed = 5082
   )
 
@@ -166,6 +169,8 @@ for (i in seq_len(nrow(study_areas))) {
       input_sensors[[1]]
     )
 
+  pixels_per_ha_sens <- 10000 / (prod(res(input_sensors)))
+
   list_clusters_sensor[[study_area_idx]] <- sample_kmeans(
     input = input_sensors,
     clusters = round(
@@ -175,10 +180,22 @@ for (i in seq_len(nrow(study_areas))) {
     sp_pts = TRUE,
     xy_weight = 2,
     candidates = candidates_sensor,
-    min_cluster_size = 1250,
+    min_cluster_size = pixels_per_ha_sens / (sampling_zones_ha * 2),
     seed = 5082
   )
 }
+
+# Areas of similarity
+
+inv_dist <- (list_clusters_10m[[i]]$distances*0 + 1) /
+  list_clusters_10m[[i]]$distances
+
+inv_dist_zones <- zonal(
+  inv_dist,
+  list_clusters_10m[[i]]$clusters,
+  max,
+  as.raster = TRUE
+)
 
 # Params for colors
 
