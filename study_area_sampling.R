@@ -18,7 +18,7 @@ dir_sensors <- paste0(dir_data, "/Sensors data/TIFF Files/") |>
   )
 
 sampling_zones_ha <- 2
-
+grid_spacing <- 38
 
 study_areas <- paste0(
   dir_data,
@@ -39,6 +39,19 @@ sampling_input <- paste0(
   rast()
 
 pixels_per_ha_10m <- 10000 / (prod(res(sampling_input)))
+
+
+# 2m DEM for study areas
+
+dem_2m_list <- list.files(
+  "C:/Users/anbm/OneDrive - SEGES Innovation PS/UDKIK/Data/Dem_2m/Dem_2m",
+  pattern = "\\.tif$",
+  full.names = TRUE
+) |>
+  lapply(FUN = rast)
+
+
+# Prepare loop
 
 list_clusters_10m <- list()
 list_clusters_sensor <- list()
@@ -107,18 +120,61 @@ for (i in seq_len(nrow(study_areas))) {
       touches = FALSE
     )
 
-  list_clusters_10m[[study_area_idx]] <- sample_kmeans(
-    input = sampling_input_pctile,
-    clusters = round(
-      study_areas[study_area_idx, ]$Shape_Area * sampling_zones_ha / 10000
-    ),
-    use_xy = TRUE,
-    sp_pts = TRUE,
-    xy_weight = 2,
-    candidates = candidates_field,
-    min_cluster_size = pixels_per_ha_10m / (sampling_zones_ha*2),
-    seed = 5082
+  # Create clusters for 10 m
+
+  n_clusters_10m_i <- round(
+    study_areas[study_area_idx, ]$Shape_Area * sampling_zones_ha / 10000
   )
+
+  run_again <- TRUE
+  plus_clusters_10m <- 0
+  try_seed <- 5082
+
+  while (run_again) {
+    print(
+      paste0(
+        format(Sys.time(), "%Y-%m-%d %X"),
+        ": Study area ", i,
+        ": Trying to create clusters for 10 m input with seed ",
+        try_seed
+      )
+    )
+
+    list_clusters_10m[[study_area_idx]] <- sample_kmeans(
+      input = sampling_input_pctile,
+      clusters = n_clusters_10m_i + plus_clusters_10m,
+      use_xy = TRUE,
+      sp_pts = TRUE,
+      xy_weight = 2,
+      candidates = candidates_field,
+      min_cluster_size = pixels_per_ha_10m / (sampling_zones_ha * 2),
+      seed = try_seed
+    )
+
+    if (
+      nrow(list_clusters_10m[[study_area_idx]]$points) < n_clusters_10m_i
+    ) {
+      plus_clusters_10m <- plus_clusters_10m + 1
+      try_seed <- try_seed + 1
+    } else {
+      if (
+        nrow(list_clusters_10m[[study_area_idx]]$points) > n_clusters_10m_i
+      ) {
+        plus_clusters_10m <- plus_clusters_10m - 1
+        try_seed <- try_seed + 1
+      } else {
+        run_again <- FALSE
+        print(
+          paste0(
+            format(Sys.time(), "%Y-%m-%d %X"),
+            ": Study area ", i,
+            ": Clusters for 10 m input created with seed ",
+            try_seed
+          )
+        )
+      }
+    }
+  }
 
   list_samples_10m[[study_area_idx]] <- list_clusters_10m[[
     study_area_idx
@@ -136,6 +192,9 @@ for (i in seq_len(nrow(study_areas))) {
         as.data.frame() |>
         select(x, y)
     )
+
+  names(list_clusters_10m[[i]]$clusters) <- "cluster"
+  names(list_clusters_10m[[i]]$distances) <- "distance"
 
 
   # Areas of similarity, 10 m input
@@ -157,7 +216,7 @@ for (i in seq_len(nrow(study_areas))) {
     )
   ) |>
     filter(
-      ID == lyr.1
+      ID == cluster
     ) |>
     terra::intersect(
       as.polygons(
@@ -170,7 +229,6 @@ for (i in seq_len(nrow(study_areas))) {
     ) |>
     buffer(-2) |>
     buffer(2)
-
 
 
   # Clusters based on sensors data
@@ -199,31 +257,119 @@ for (i in seq_len(nrow(study_areas))) {
       }
     )
 
+  field_dem2m <- dem_2m_list[[study_area_idx]] |>
+    project(
+      y = field_dualem[[4]],
+      mask =  TRUE,
+      method = "cubicspline"
+    )
+
   input_sensors <- c(
     field_dualem[[4]],
-    field_gamma[[1]]
+    field_gamma[[1]],
+    field_dem2m
   )
 
-  candidates_sensor <- candidates_field |>
-    as.polygons() |>
+  # Transform sensor input to percentiles to create clusters of roughly the
+  # same size.
+
+  input_sensors_pctile <- sapp(
+    input_sensors,
+    function(x) {
+      x_ecdf <- ecdf(values(x))
+      app(x, x_ecdf)
+    }
+  )
+
+  sensor_means <- global(
+    input_sensors_pctile,
+    "mean",
+    na.rm = TRUE
+  ) |>
+    unlist()
+
+  sensor_sds <- global(
+    input_sensors_pctile,
+    "sd",
+    na.rm = TRUE
+  ) |>
+    unlist()
+
+  input_sensors_pctile <- input_sensors_pctile |>
+    clamp(
+      lower = sensor_means - sensor_sds * 3,
+      upper = sensor_means + sensor_sds * 3
+    )
+
+  candidates_sensor <- study_areas[study_area_idx, ] |>
+      buffer(width = -10) |>
     rasterize(
       input_sensors[[1]]
+    ) |>
+    mask(
+      buffer(list_clusters_10m[[study_area_idx]]$points, 4),
+      inverse = TRUE,
+      touches = FALSE
     )
 
   pixels_per_ha_sens <- 10000 / (prod(res(input_sensors)))
 
-  list_clusters_sensor[[study_area_idx]] <- sample_kmeans(
-    input = input_sensors,
-    clusters = round(
-      study_areas[study_area_idx, ]$Shape_Area * sampling_zones_ha / 10000
-    ),
-    use_xy = TRUE,
-    sp_pts = TRUE,
-    xy_weight = 2,
-    candidates = candidates_sensor,
-    min_cluster_size = pixels_per_ha_sens / (sampling_zones_ha * 2),
-    seed = 5082
+  n_clusters_sens_i <- round(
+    study_areas[study_area_idx, ]$Shape_Area * sampling_zones_ha / 10000
   )
+
+  run_again <- TRUE
+  plus_clusters_sens <- 0
+  try_seed <- 5082
+
+  while (run_again) {
+    print(
+      paste0(
+        format(Sys.time(), "%Y-%m-%d %X"),
+        ": Study area ", i,
+        ": Trying to create clusters for sensor input with seed ",
+        try_seed
+      )
+    )
+
+    list_clusters_sensor[[study_area_idx]] <- sample_kmeans(
+      input = input_sensors_pctile,
+      clusters = n_clusters_sens_i + plus_clusters_sens,
+      use_xy = TRUE,
+      sp_pts = TRUE,
+      xy_weight = 2,
+      candidates = candidates_sensor,
+      min_cluster_size = pixels_per_ha_sens / (sampling_zones_ha * 2),
+      seed = try_seed
+    )
+
+    if (
+      nrow(list_clusters_sensor[[study_area_idx]]$points) < n_clusters_sens_i
+      ) {
+      plus_clusters_sens <- plus_clusters_sens + 1
+      try_seed <- try_seed + 1
+    } else {
+      if (
+        nrow(list_clusters_sensor[[study_area_idx]]$points) > n_clusters_sens_i
+      ) {
+        plus_clusters_sens <- plus_clusters_sens - 1
+        try_seed <- try_seed + 1
+      } else {
+        run_again <- FALSE
+        print(
+          paste0(
+            format(Sys.time(), "%Y-%m-%d %X"),
+            ": Study area ", i,
+            ": Clusters for sensor input created with seed ",
+            try_seed
+          )
+        )
+      }
+    }
+  }
+
+  names(list_clusters_sensor[[i]]$clusters) <- "cluster"
+  names(list_clusters_sensor[[i]]$distances) <- "distance"
 
   list_samples_sensor[[study_area_idx]] <- list_clusters_sensor[[
     study_area_idx
@@ -266,7 +412,7 @@ for (i in seq_len(nrow(study_areas))) {
     )
   ) |>
     filter(
-      ID == lyr.1
+      ID == cluster
     ) |>
     terra::intersect(
       as.polygons(
@@ -279,53 +425,53 @@ for (i in seq_len(nrow(study_areas))) {
     ) |>
     buffer(-2) |>
     buffer(2)
+}
 
 
-  # Grid samples
+# New grid sampling locations
 
-  list_samples_grid[[study_area_idx]] <- sampling_input_pctile |>
-    crds() |>
-    (`-`)(5) |>
-    (`/`)(30) |>
-    round() |>
-    (`*`)(30) |>
-    (`+`)(5) |>
-    as.data.frame() |>
-    distinct() |>
-    vect(keepgeom = TRUE, crs = crs(sampling_input_pctile)) |>
-    mask(
-      as.polygons(candidates_field)
+for (i in seq_len(nrow(study_areas))) {
+  study_area_idx <- i
+
+  ext_i <- study_areas[study_area_idx, ] |> ext()
+
+  list_samples_grid[[study_area_idx]] <- expand.grid(
+    x = seq(
+      from = round(ext_i[1] / grid_spacing) * grid_spacing,
+      to = ext_i[2],
+      by = grid_spacing
+    ),
+    y = seq(
+      from = round(ext_i[3] / grid_spacing) * grid_spacing,
+      to = ext_i[4],
+      by = grid_spacing
+    )
+  ) |>
+    vect(
+      crs = crs(study_areas),
+      keepgeom = TRUE
     ) |>
     mask(
-      list_clusters_10m[[i]]$points,
+      buffer(study_areas[study_area_idx, ], -10)
+    ) |>
+    mask(
+      buffer(list_clusters_10m[[study_area_idx]]$points, 4),
       inverse = TRUE
     ) |>
     mask(
-      list_clusters_sensor[[i]]$points,
+      buffer(list_clusters_sensor[[study_area_idx]]$points, 4),
       inverse = TRUE
     ) |>
     mutate(
       ID = row_number() +
-        nrow(list_samples_10m[[i]]) +
-        nrow(list_samples_sensor[[i]]),
+        nrow(list_samples_10m[[study_area_idx]]) +
+        nrow(list_samples_sensor[[study_area_idx]]),
       type = "grid",
       study_area = study_area_idx,
       cluster = NA
     )
 }
 
-# Check for overlapping points
-
-lapply(
-  1:5,
-  function(x) {
-    mask(
-      list_clusters_sensor[[x]]$points,
-      list_clusters_10m[[x]]$points
-    ) |>
-      nrow()
-  }
-)
 
 
 # Params for colors
@@ -407,73 +553,6 @@ lapply(
 
 dev.off()
 
-# Plot grid samples
-
-pdf(
-  paste0(dir_plots, "/figure_grid_samples.pdf")
-)
-
-lapply(
-  seq_len(nrow(study_areas)),
-  function(x) {
-    study_area_idx <- x
-
-    plot(
-      as.factor(list_clusters_10m[[study_area_idx]]$clusters),
-      main = paste0(
-        "Study area ",
-        study_area_idx,
-        ": Grid samples"
-      ),
-      col = get_map_colors(
-        n = nrow(list_clusters_10m[[study_area_idx]]$points),
-        L = my_L,
-        minC = my_minC,
-        maxC = my_maxC
-      ),
-      ext = ext(study_areas[study_area_idx,]),
-      alpha = 0.5,
-      buffer = TRUE
-    )
-    plot(
-      as.polygons(
-        list_clusters_10m[[study_area_idx]]$clusters
-      ),
-      1,
-      add = TRUE,
-      alpha = 0.25,
-      col = NA,
-      legend = FALSE,
-      border = "gray50"
-    )
-    plot(
-      list_samples_grid[[study_area_idx]],
-      pch = 24,
-      bg = "yellow",
-      add = TRUE,
-      cex = 0.6
-    )
-    plot(
-      list_clusters_10m[[study_area_idx]]$points,
-      pch = 21,
-      bg = "white",
-      add = TRUE
-    )
-    plot(study_areas[study_area_idx,], add = TRUE)
-    text(
-      list_clusters_10m[[study_area_idx]]$points,
-      list_clusters_10m[[study_area_idx]]$points$ID,
-      cex = 0.7,
-      col = "black",
-      pos = 3,
-      hc = "white",
-      hw = 0.1,
-      halo = TRUE
-    )
-  }
-)
-
-dev.off()
 
 
 # Plot sensor clusters
@@ -547,69 +626,70 @@ lapply(
 
 dev.off()
 
-# Summarise costs
 
-n_samples_10m <- lapply(
-  list_clusters_10m,
+# Plot grid samples
+
+pdf(
+  paste0(dir_plots, "/figure_grid_samples.pdf")
+)
+
+lapply(
+  seq_len(nrow(study_areas)),
   function(x) {
-    nrow(x$points)
+    study_area_idx <- x
+
+    plot(
+      as.factor(list_clusters_10m[[study_area_idx]]$clusters),
+      main = paste0(
+        "Study area ",
+        study_area_idx,
+        ": Grid samples"
+      ),
+      col = get_map_colors(
+        n = nrow(list_clusters_10m[[study_area_idx]]$points),
+        L = my_L,
+        minC = my_minC,
+        maxC = my_maxC
+      ),
+      ext = ext(study_areas[study_area_idx,]),
+      alpha = 0.5,
+      buffer = TRUE
+    )
+    plot(
+      as.polygons(
+        list_clusters_10m[[study_area_idx]]$clusters
+      ),
+      1,
+      add = TRUE,
+      alpha = 0.25,
+      col = NA,
+      legend = FALSE,
+      border = "gray50"
+    )
+    plot(
+      list_samples_grid[[study_area_idx]],
+      pch = 24,
+      bg = "yellow",
+      add = TRUE,
+      cex = 0.6
+    )
+    plot(
+      list_clusters_10m[[study_area_idx]]$points,
+      pch = 21,
+      bg = "white",
+      add = TRUE
+    )
+    plot(
+      list_clusters_sensor[[study_area_idx]]$points,
+      pch = 21,
+      bg = "gray",
+      add = TRUE
+    )
+    plot(study_areas[study_area_idx,], add = TRUE)
   }
-) |>
-  unlist()
+)
 
-n_samples_sensor <- lapply(
-  list_clusters_sensor,
-  function(x) {
-    nrow(x$points)
-  }
-) |>
-  unlist()
-
-n_samples_grid <- lapply(
-  list_samples_grid,
-  function(x) {
-    nrow(x)
-  }
-) |>
-  unlist()
-
-sampling_costs <- data.frame(
-  Study_area = as.character(seq_len(nrow(study_areas))),
-  n_samples_10m = n_samples_10m,
-  n_samples_sensor = n_samples_sensor,
-  n_samples_grid = n_samples_grid
-) |>
-  mutate(
-    cost_10m = n_samples_10m * 675,
-    cost_sensor = n_samples_sensor * 675,
-    cost_grid = n_samples_grid * 375,
-    total_cost = cost_10m + cost_sensor + cost_grid
-  )
-
-sampling_costs
-
-sum_sampling_costs <- sampling_costs |>
-  summarise(
-    n_samples_10m = sum(n_samples_10m),
-    n_samples_sensor = sum(n_samples_sensor),
-    n_samples_grid = sum(n_samples_grid),
-    cost_grid = sum(cost_grid),
-    cost_10m = sum(cost_10m),
-    cost_sensor = sum(cost_sensor),
-    total_cost = sum(total_cost)
-  ) |>
-  mutate(
-    Study_area = "Sum"
-  )
-
-bind_rows(
-  sampling_costs,
-  sum_sampling_costs
-) |>
-  write.xlsx(
-    paste0(dir_data, "Sampling_costs_", Sys.Date(), ".xlsx"),
-    overwrite = TRUE
-  )
+dev.off()
 
 # Plot 10m and sensor points together
 
@@ -668,5 +748,77 @@ lapply(
 )
 
 dev.off()
+
+# Summarise costs
+
+cost_grid <- 675
+cost_10m <- 675
+cost_sensor <- 675
+
+n_samples_10m <- lapply(
+  list_clusters_10m,
+  function(x) {
+    nrow(x$points)
+  }
+) |>
+  unlist()
+
+n_samples_sensor <- lapply(
+  list_clusters_sensor,
+  function(x) {
+    nrow(x$points)
+  }
+) |>
+  unlist()
+
+n_samples_grid <- lapply(
+  list_samples_grid,
+  function(x) {
+    nrow(x)
+  }
+) |>
+  unlist()
+
+sampling_costs <- data.frame(
+  Study_area = as.character(seq_len(nrow(study_areas))),
+  n_samples_10m = n_samples_10m,
+  n_samples_sensor = n_samples_sensor,
+  n_samples_grid = n_samples_grid
+) |>
+  mutate(
+    cost_10m = n_samples_10m * cost_10m,
+    cost_sensor = n_samples_sensor * cost_sensor,
+    cost_grid = n_samples_grid * cost_grid,
+    total_cost = cost_10m + cost_sensor + cost_grid
+  )
+
+sampling_costs
+
+sum_sampling_costs <- sampling_costs |>
+  summarise(
+    n_samples_10m = sum(n_samples_10m),
+    n_samples_sensor = sum(n_samples_sensor),
+    n_samples_grid = sum(n_samples_grid),
+    cost_10m = sum(cost_10m),
+    cost_sensor = sum(cost_sensor),
+    cost_grid = sum(cost_grid),
+    total_cost = sum(total_cost)
+  ) |>
+  mutate(
+    Study_area = "Sum"
+  )
+
+sum_sampling_costs
+
+bind_rows(
+  sampling_costs,
+  sum_sampling_costs
+) |>
+  write.xlsx(
+    paste0(dir_data, "Sampling_costs_", Sys.Date(), ".xlsx"),
+    overwrite = TRUE
+  )
+
+
 
 # END
