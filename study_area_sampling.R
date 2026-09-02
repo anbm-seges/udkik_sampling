@@ -18,7 +18,7 @@ dir_sensors <- paste0(dir_data, "/Sensors data/TIFF Files/") |>
   )
 
 sampling_zones_ha <- 2
-grid_spacing <- 38
+grid_spacing <- 28
 
 study_areas <- paste0(
   dir_data,
@@ -678,13 +678,40 @@ lapply(
   function(x) {
     study_area_idx <- x
 
+    name_grid_samples <- paste0(
+      "Grid samples (spacing = ",
+      grid_spacing,
+      " m)"
+    )
+
+    shapes_pts <- c(
+      "k-means samples (10 m input)" = 21,
+      "k-means samples (sensor input)" = 23,
+      "Grid samples" = 24
+    )
+    names(shapes_pts) <- c(
+      "k-means samples (10 m input)",
+      "k-means samples (sensor input)",
+      name_grid_samples
+    )
+    colors_pts <- c(
+      "k-means samples (10 m input)" = "white",
+      "k-means samples (sensor input)" = "gray",
+      "Grid samples" = "yellow"
+    )
+    names(colors_pts) <- c(
+      "k-means samples (10 m input)",
+      "k-means samples (sensor input)",
+      name_grid_samples
+    )
+
     pts_all_i <- rbind(
       list_samples_10m[[study_area_idx]] |>
         mutate(type = "k-means samples (10 m input)"),
       list_samples_sensor[[study_area_idx]] |>
         mutate(type = "k-means samples (sensor input)"),
       list_samples_grid[[study_area_idx]] |>
-        mutate(type = "Grid samples")
+        mutate(type = name_grid_samples)
     )
 
     tidyterra::autoplot(
@@ -718,77 +745,15 @@ lapply(
       ) +
       scale_shape_manual(
         name = "Sample type",
-        values = c(
-          "k-means samples (10 m input)" = 21,
-          "k-means samples (sensor input)" = 23,
-          "Grid samples" = 24
-        )
+        values = shapes_pts,
+        guide = guide_legend(order = 1)
       ) +
       scale_fill_manual(
         name = "Sample type",
-        values = c(
-          "k-means samples (10 m input)" = "white",
-          "k-means samples (sensor input)" = "gray",
-          "Grid samples" = "yellow"
-        )
-      )
-
-    ## add legend for points layers
-
-    plot(
-      dem_2m_list[[study_area_idx]],
-      main = paste0(
-        "Study area ",
-        study_area_idx,
-        ": Grid samples"
-      ),
-      ext = ext(study_areas[study_area_idx,]),
-      buffer = TRUE,
-      plg = list(
-        x = "right",
-        size = c(0.5, 0.5),
-        cex = 0.8,
-        title = "Elevation (m)",
-        title.adj = 1,
-        title.cex = 0.80
-      )
-    )
-
-    plot(study_areas[study_area_idx,], add = TRUE)
-    plot(
-      list_samples_grid[[study_area_idx]],
-      pch = 24,
-      bg = "yellow",
-      add = TRUE,
-      cex = 0.6
-    )
-    plot(
-      list_clusters_10m[[study_area_idx]]$points,
-      pch = 21,
-      bg = "white",
-      add = TRUE,
-      cex = 0.6
-    )
-    plot(
-      list_clusters_sensor[[study_area_idx]]$points,
-      pch = 23,
-      bg = "gray",
-      add = TRUE,
-      cex = 0.6
-    )
-    add_legend(
-      legend_placements[study_area_idx],
-      legend = c(
-        "k-means samples (10 m input)",
-        "k-means samples (sensor input)",
-        "Grid samples"
-      ),
-      cex = 0.6,
-      pch = c(21, 23, 24),
-      pt.bg = c("white", "gray", "yellow"),
-      bty = "n"
-    )
-
+        values = colors_pts,
+        guide = guide_legend(order = 1)
+      ) +
+      theme_bw()
   }
 )
 
@@ -864,7 +829,8 @@ dev.off()
 
 # Summarise costs
 
-cost_grid <- 675
+cost_grid <- 375
+# cost_grid <- 675
 cost_10m <- 675
 cost_sensor <- 675
 
