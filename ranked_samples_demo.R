@@ -13,7 +13,7 @@ dir_data <- "C:/Users/anbm/OneDrive - SEGES Innovation PS/UDKIK/Data/"
 study_areas <- paste0(
   dir_data,
   "Study_areas/Study_areas.shp"
-  ) |>
+) |>
   vect()
 
 values(study_areas)
@@ -51,7 +51,7 @@ sampling_input_field <- ifel(
 plot(
   sampling_input_field,
   nr = 1
-  )
+)
 
 # Transform input to percentiles to create clusters of roughly the same size.
 
@@ -80,8 +80,8 @@ field_sds <- global(
 
 sampling_input_pctile <- sampling_input_pctile |>
   clamp(
-    lower = field_means - field_sds*3,
-    upper = field_means + field_sds*3
+    lower = field_means - field_sds * 3,
+    upper = field_means + field_sds * 3
   )
 
 plot(
@@ -101,7 +101,7 @@ candidates_field <- ifel(
   )
 
 plot(candidates_field)
-plot(study_areas[study_area_idx,], add = TRUE)
+plot(study_areas[study_area_idx, ], add = TRUE)
 
 set.seed(124)
 
@@ -118,13 +118,13 @@ myclusters <- sample_kmeans(
 plot(
   as.factor(myclusters$clusters),
   col = carto_pal(9, "Bold")
-  )
+)
 points(
   myclusters$points,
   pch = 21,
   bg = "white"
 )
-plot(study_areas[study_area_idx,], add = TRUE)
+plot(study_areas[study_area_idx, ], add = TRUE)
 
 plot(myclusters$distances)
 points(
@@ -140,7 +140,7 @@ extra_pts <- list()
 list_index <- 1
 
 for (i in seq_len(nrow(myclusters$points))) {
-  if(
+  if (
     cluster_areas[i] > 50
   ) {
     rast_i <- mask(
@@ -175,7 +175,7 @@ for (i in seq_len(nrow(myclusters$points))) {
 
     clusters_i <- sample_kmeans(
       input = rast_i,
-      clusters = round(cluster_areas[i] / (100/3) ),
+      clusters = round(cluster_areas[i] / (100 / 3)),
       use_xy = TRUE,
       only_xy = TRUE,
       xy_weight = 2,
@@ -184,7 +184,7 @@ for (i in seq_len(nrow(myclusters$points))) {
       weights = sqrt(distances_i)
     )
 
-    extra_pts[[list_index]] <- clusters_i$points %>%
+    extra_pts[[list_index]] <- clusters_i$points |>
       mutate(
         cluster = i
       )
@@ -198,7 +198,7 @@ extra_pts <- do.call(rbind, extra_pts)
 all_pts <- bind_spat_rows(
   myclusters$points,
   extra_pts
-) %>%
+) |>
   mutate(
     cluster = case_when(
       is.na(cluster) ~ ID,
@@ -214,17 +214,17 @@ all_pts <- terra::extract(
   all_pts,
   bind = TRUE,
   ID = FALSE
-) %>%
+) |>
   arrange(
     cluster, lyr1
-  ) %>%
+  ) |>
   group_by(
     cluster
-  ) %>%
+  ) |>
   mutate(
     rank = rank(lyr1, ties.method = "first"),
     label = paste0(cluster, letters[rank])
-  ) %>%
+  ) |>
   ungroup()
 
 # Plot results
@@ -235,9 +235,9 @@ plot(
     100,
     start = 0,
     end = 1
-    ),
+  ),
   buffer = TRUE
-  )
+)
 plot(
   as.polygons(
     myclusters$clusters

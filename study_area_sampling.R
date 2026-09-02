@@ -135,8 +135,12 @@ for (i in seq_len(nrow(study_areas))) {
       paste0(
         format(Sys.time(), "%Y-%m-%d %X"),
         ": Study area ", i,
-        ": Trying to create clusters for 10 m input with seed ",
-        try_seed
+        " - 10 m input - seed ",
+        try_seed,
+        " - ",
+        n_clusters_10m_i + plus_clusters_10m,
+        " clusters requested - target = ",
+        n_clusters_10m_i
       )
     )
 
@@ -155,6 +159,9 @@ for (i in seq_len(nrow(study_areas))) {
       nrow(list_clusters_10m[[study_area_idx]]$points) < n_clusters_10m_i
     ) {
       plus_clusters_10m <- plus_clusters_10m + 1
+      if (plus_clusters_10m > (n_clusters_10m_i) * 0.5) {
+        plus_clusters_10m <- plus_clusters_10m - 1
+      }
       try_seed <- try_seed + 1
     } else {
       if (
@@ -168,8 +175,11 @@ for (i in seq_len(nrow(study_areas))) {
           paste0(
             format(Sys.time(), "%Y-%m-%d %X"),
             ": Study area ", i,
-            ": Clusters for 10 m input created with seed ",
-            try_seed
+            " - 10 m input - seed ",
+            try_seed,
+            " - ",
+            nrow(list_clusters_10m[[study_area_idx]]$points),
+            " clusters created"
           )
         )
       }
@@ -225,6 +235,12 @@ for (i in seq_len(nrow(study_areas))) {
           1,
           NA
         )
+      )
+    ) |>
+    terra::intersect(
+      buffer(
+        study_areas[study_area_idx, ],
+        -10
       )
     ) |>
     buffer(-2) |>
@@ -327,8 +343,12 @@ for (i in seq_len(nrow(study_areas))) {
       paste0(
         format(Sys.time(), "%Y-%m-%d %X"),
         ": Study area ", i,
-        ": Trying to create clusters for sensor input with seed ",
-        try_seed
+        " - sensor input - seed ",
+        try_seed,
+        " - ",
+        n_clusters_sens_i + plus_clusters_sens,
+        " clusters requested - target = ",
+        n_clusters_sens_i
       )
     )
 
@@ -347,6 +367,9 @@ for (i in seq_len(nrow(study_areas))) {
       nrow(list_clusters_sensor[[study_area_idx]]$points) < n_clusters_sens_i
       ) {
       plus_clusters_sens <- plus_clusters_sens + 1
+      if (plus_clusters_sens > (n_clusters_sens_i) * 0.5) {
+        plus_clusters_sens <- plus_clusters_sens - 1
+      }
       try_seed <- try_seed + 1
     } else {
       if (
@@ -360,8 +383,11 @@ for (i in seq_len(nrow(study_areas))) {
           paste0(
             format(Sys.time(), "%Y-%m-%d %X"),
             ": Study area ", i,
-            ": Clusters for sensor input created with seed ",
-            try_seed
+            " - sensor input - seed ",
+            try_seed,
+            " - ",
+            nrow(list_clusters_sensor[[study_area_idx]]$points),
+            " clusters created"
           )
         )
       }
@@ -423,6 +449,12 @@ for (i in seq_len(nrow(study_areas))) {
         )
       )
     ) |>
+    terra::intersect(
+      buffer(
+        study_areas[study_area_idx, ],
+        -10
+      )
+    ) |>
     buffer(-2) |>
     buffer(2)
 }
@@ -481,6 +513,14 @@ my_maxC <- 30
 my_minC <- 25
 
 # Plot 10 m clusters
+
+legend_placements <- c(
+  "topright",
+  "topleft",
+  "bottomright",
+  "topright",
+  "bottomleft"
+)
 
 dir_plots <- paste0(
   "C:/Users/anbm/OneDrive - SEGES Innovation PS/UDKIK/Figures/"
@@ -638,34 +678,83 @@ lapply(
   function(x) {
     study_area_idx <- x
 
+    pts_all_i <- rbind(
+      list_samples_10m[[study_area_idx]] |>
+        mutate(type = "k-means samples (10 m input)"),
+      list_samples_sensor[[study_area_idx]] |>
+        mutate(type = "k-means samples (sensor input)"),
+      list_samples_grid[[study_area_idx]] |>
+        mutate(type = "Grid samples")
+    )
+
+    tidyterra::autoplot(
+      dem_2m_list[[study_area_idx]]
+    ) +
+      geom_spatvector(
+        data = study_areas[study_area_idx,],
+        fill = NA,
+        color = "black"
+      ) +
+      labs(
+        fill = "Elevation (m)"
+      ) +
+      ggnewscale::new_scale_fill() +
+      geom_spatvector(
+        data = pts_all_i,
+        aes(
+          shape = type,
+          fill = type
+        ),
+        color = "black",
+        size = 1.5,
+        show.legend = TRUE
+      ) +
+      ggtitle(
+        paste0(
+          "Study area ",
+          study_area_idx,
+          ": Grid samples"
+        )
+      ) +
+      scale_shape_manual(
+        name = "Sample type",
+        values = c(
+          "k-means samples (10 m input)" = 21,
+          "k-means samples (sensor input)" = 23,
+          "Grid samples" = 24
+        )
+      ) +
+      scale_fill_manual(
+        name = "Sample type",
+        values = c(
+          "k-means samples (10 m input)" = "white",
+          "k-means samples (sensor input)" = "gray",
+          "Grid samples" = "yellow"
+        )
+      )
+
+    ## add legend for points layers
+
     plot(
-      as.factor(list_clusters_10m[[study_area_idx]]$clusters),
+      dem_2m_list[[study_area_idx]],
       main = paste0(
         "Study area ",
         study_area_idx,
         ": Grid samples"
       ),
-      col = get_map_colors(
-        n = nrow(list_clusters_10m[[study_area_idx]]$points),
-        L = my_L,
-        minC = my_minC,
-        maxC = my_maxC
-      ),
       ext = ext(study_areas[study_area_idx,]),
-      alpha = 0.5,
-      buffer = TRUE
+      buffer = TRUE,
+      plg = list(
+        x = "right",
+        size = c(0.5, 0.5),
+        cex = 0.8,
+        title = "Elevation (m)",
+        title.adj = 1,
+        title.cex = 0.80
+      )
     )
-    plot(
-      as.polygons(
-        list_clusters_10m[[study_area_idx]]$clusters
-      ),
-      1,
-      add = TRUE,
-      alpha = 0.25,
-      col = NA,
-      legend = FALSE,
-      border = "gray50"
-    )
+
+    plot(study_areas[study_area_idx,], add = TRUE)
     plot(
       list_samples_grid[[study_area_idx]],
       pch = 24,
@@ -677,15 +766,29 @@ lapply(
       list_clusters_10m[[study_area_idx]]$points,
       pch = 21,
       bg = "white",
-      add = TRUE
+      add = TRUE,
+      cex = 0.6
     )
     plot(
       list_clusters_sensor[[study_area_idx]]$points,
-      pch = 21,
+      pch = 23,
       bg = "gray",
-      add = TRUE
+      add = TRUE,
+      cex = 0.6
     )
-    plot(study_areas[study_area_idx,], add = TRUE)
+    add_legend(
+      legend_placements[study_area_idx],
+      legend = c(
+        "k-means samples (10 m input)",
+        "k-means samples (sensor input)",
+        "Grid samples"
+      ),
+      cex = 0.6,
+      pch = c(21, 23, 24),
+      pt.bg = c("white", "gray", "yellow"),
+      bty = "n"
+    )
+
   }
 )
 
@@ -694,7 +797,7 @@ dev.off()
 # Plot 10m and sensor points together
 
 pdf(
-  paste0(dir_plots, "/figure_clusters_10m_sensor.pdf")
+  paste0(dir_plots, "/figure_clusters_comparison.pdf")
 )
 
 lapply(
@@ -729,21 +832,31 @@ lapply(
       legend = FALSE,
       border = "black"
     )
+    plot(study_areas[study_area_idx,], add = TRUE)
     plot(
       list_clusters_10m[[study_area_idx]]$points,
       pch = 21,
       bg = "white",
-      add = TRUE,
-      legend = TRUE
+      add = TRUE
     )
     plot(
       list_clusters_sensor[[study_area_idx]]$points,
-      pch = 21,
-      bg = "red",
-      add = TRUE,
-      legend = TRUE
+      pch = 23,
+      bg = "gray",
+      add = TRUE
     )
-    plot(study_areas[study_area_idx,], add = TRUE)
+    add_legend(
+      legend_placements[study_area_idx],
+      legend = c(
+        "k-means samples (10 m input)",
+        "k-means samples (sensor input)"
+      ),
+      pch = c(21, 23),
+      cex = 0.6,
+      pt.cex = 1,
+      pt.bg = c("white", "gray"),
+      bty = "n"
+    )
   }
 )
 
